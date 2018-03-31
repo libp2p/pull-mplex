@@ -19,11 +19,6 @@ class Channel extends EE {
     this._plex = plex
     this._open = open
     this._initiator = initiator
-    this._msgs = pushable((err) => {
-      this._endedLocal = err || true
-      this.emit('end', err)
-    })
-    this._cb = null // queue cb for async data
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
 
@@ -40,6 +35,11 @@ class Channel extends EE {
     }
 
     this._log('new channel', this._name)
+
+    this._msgs = pushable((err) => {
+      if (err) { log.err(err) }
+      setImmediate(() => this.emit('end', err))
+    })
 
     this.source = this._msgs
 
@@ -71,6 +71,10 @@ class Channel extends EE {
 
       read(null, next)
     }
+  }
+
+  get id () {
+    return this._id
   }
 
   get open () {
