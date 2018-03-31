@@ -14,23 +14,14 @@ class Mplex extends EE {
     this._initiator = initiator || false
     this._chanId = this._initiator ? 0 : 1
     this._channels = {}
-    this._chandata = pushable()
-    this._cb = null
+    this._chandata = pushable((err) => {
+      setImmediate(() => this.emit('close'))
+    })
 
     this.source = this._chandata
 
     this.sink = (read) => {
       const next = (end, data) => {
-        // if (end) {
-        //   // propagate close to channels
-        //   Object
-        //     .keys(this._channels)
-        //     .forEach((id) => {
-        //       this._channels[id].end(end)
-        //       delete this._channels[id]
-        //     })
-        // }
-
         if (end === true) { return }
         if (end) { return this.emit('error', end) }
         return this._handle(data, (err) => {
@@ -40,6 +31,16 @@ class Mplex extends EE {
 
       read(null, next)
     }
+  }
+
+  end () {
+    // propagate close to channels
+    Object
+      .keys(this._channels)
+      .forEach((id) => {
+        this._channels[id].end(end)
+        delete this._channels[id]
+      })
   }
 
   push (data) {
@@ -76,6 +77,11 @@ class Mplex extends EE {
       this,
       initiator,
       open || false)
+
+    chan.once('end', () => {
+      delete this._channels[id]
+    })
+
     this._channels[id] = chan
     return chan
   }
@@ -94,9 +100,6 @@ class Mplex extends EE {
           }
 
           const chan = this._newStream(id, this._initiator, true, data.toString())
-          chan.once('end', () => {
-            delete this._channels[id]
-          })
           setImmediate(() => this.emit('stream', chan))
           return cb()
         }
