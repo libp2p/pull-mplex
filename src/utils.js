@@ -31,6 +31,7 @@ exports.decodeMsg = (msg, cb) => {
         through(function (h) {
           const header = varint.decode(h)
           this.queue({ id: header >> 3, type: header & 7 })
+          this.queue(null)
         })
       ),
       pull(

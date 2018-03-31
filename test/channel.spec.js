@@ -108,15 +108,14 @@ describe('channel', () => {
   it('receiver should be able to send data', (done) => {
     const p = pair()
 
-    const plex1 = new Mplex()
-    const plex2 = new Mplex()
+    const plex1 = new Mplex(true)
+    const plex2 = new Mplex(false)
 
     pull(plex1, p[0], plex1)
     pull(plex2, p[1], plex2)
 
     const id = plex1.nextChanId(true)
     const chan1 = plex1._newStream(id, true, true, 'stream 1')
-
     const chan2 = plex2._newStream(id, false, true, 'stream 2')
 
     pull(
@@ -142,8 +141,6 @@ describe('channel', () => {
         stream,
         pull.collect((err, data) => {
           expect(err).to.not.exist()
-          expect(stream._endedRemote).to.be.ok()
-          expect(stream._endedLocal).to.be.ok()
           expect(data[0]).to.deep.eql(Buffer.from('hellooooooooooooo'))
           done()
         })
@@ -171,7 +168,7 @@ describe('channel', () => {
     })
   })
 
-  it('closing channel should allow reading but not writing', (done) => {
+  it('should echo', (done) => {
     const p = pair()
 
     const plex1 = new Mplex(true)
@@ -182,23 +179,24 @@ describe('channel', () => {
 
     const chan1 = plex1.newStream('stream 1')
 
+    plex2.once('stream', (stream) => {
+      pull(
+        stream,
+        stream
+      )
+    })
+
     pull(
       pull.values([Buffer.from('hello')]),
       chan1,
-      pull.through(d => console.dir(d.toString())),
+      pull.through((data) => {
+        console.dir(data)
+      }),
       pull.collect((err, data) => {
         expect(err).to.not.exist()
         expect(data[0]).to.deep.eql(Buffer.from('hello'))
         done()
       })
     )
-
-    plex2.on('stream', (stream) => {
-      pull(
-        stream,
-        pull.through(d => console.dir(d.toString())),
-        stream
-      )
-    })
   })
 })
