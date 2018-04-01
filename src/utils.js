@@ -24,24 +24,19 @@ exports.encodeMsg = (id, type, data, cb) => {
 }
 
 exports.decodeMsg = (msg, cb) => {
+  let h = null
   return pull(
-    cat([
-      pull(
-        pull.values([msg.slice(0, 1)]),
-        through(function (h) {
-          const header = varint.decode(h)
-          this.queue({ id: header >> 3, type: header & 7 })
-          this.queue(null)
-        })
-      ),
-      pull(
-        pull.values([msg.slice(1)]),
-        lp.decode()
-      )
-    ]),
+    pull.values([msg]),
+    through(function (buf) {
+      const header = varint.decode(buf)
+      h = { id: header >> 3, type: header & 7 }
+      this.queue(buf.slice(varint.decode.bytes))
+      this.queue(null)
+    }),
+    lp.decode(),
     pull.collect((err, data) => {
       if (err) { return cb(err) }
-      cb(null, data)
+      cb(null, [h, data[0]])
     })
   )
 }
