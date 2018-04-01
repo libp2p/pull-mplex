@@ -8,22 +8,45 @@ const Channel = require('./channel')
 const consts = require('./consts')
 const utils = require('./utils')
 
+const debug = require('debug')
+
+const log = debug('pull-plex')
+log.err = debug('pull-plex:err')
+
 class Mplex extends EE {
-  constructor (initiator) {
+  constructor (initiator, onChan) {
     super()
-    this._initiator = initiator || false
-    this._chanId = this._initiator ? 0 : 1
+    this._initiator = initiator || true
+    this._chanId = 1
     this._channels = {}
+
+    this._log = (name, data) => {
+      log({
+        src: 'channel.js',
+        op: name,
+        channel: this._name,
+        id: this._id,
+        localEnded: this._endedLocal,
+        remoteEnded: this._endedRemote,
+        initiator: this._initiator,
+        data: data || ''
+      })
+    }
+
     this._chandata = pushable((err) => {
-      setImmediate(() => this.emit('close'))
+      this.destroy(err || new Error('Underlying stream has been closed'))
     })
+
+    if (onChan) {
+      this.on('stream', (chan) => onChan(chan, chan.id))
+    }
 
     this.source = this._chandata
 
     this.sink = (read) => {
       const next = (end, data) => {
         if (end === true) { return }
-        if (end) { return this.emit('error', end) }
+        if (end) { return this.destroy(end) }
         return this._handle(data, (err) => {
           read(err, next)
         })
@@ -33,29 +56,36 @@ class Mplex extends EE {
     }
   }
 
-  end () {
+  destroy (err) {
     // propagate close to channels
     Object
       .keys(this._channels)
       .forEach((id) => {
-        this._channels[id].end(end)
+        const chan = this._channels[id]
+        chan.close(err)
         delete this._channels[id]
       })
+
+    if (err) {
+      return setImmediate(() => this.emit('error', err))
+    }
+
+    this.emit('close')
   }
 
   push (data) {
     this._chandata.push(data)
-    // this._drain()
   }
 
   nextChanId (initiator) {
     let inc = 1
-    if (initiator) { inc += 1 }
+    if (initiator) { inc = 1 }
     this._chanId += inc + 1
+
     return this._chanId
   }
 
-  newStream (name) {
+  createStream (name) {
     return this._newStream(null, this._initiator, false, name)
   }
 
@@ -78,7 +108,7 @@ class Mplex extends EE {
       initiator,
       open || false)
 
-    chan.once('end', () => {
+    chan.once('close', () => {
       delete this._channels[id]
     })
 
@@ -93,10 +123,9 @@ class Mplex extends EE {
       const data = _data[1]
       switch (type) {
         case consts.type.NEW: {
-          if (this._initiator && (id & 1) !== 1) {
-            return this.emit(
-              'error',
-              new Error(`stream initiator can't have even ids`))
+          if (!this._initiator && (id & 1) !== 1) {
+            return this.emit('error',
+              new Error(`Initiator can't have even id's!`))
           }
 
           const chan = this._newStream(id, this._initiator, true, data.toString())
@@ -117,13 +146,17 @@ class Mplex extends EE {
         case consts.type.IN_CLOSE: {
           const chan = this._channels[id]
           if (chan) {
-            chan.end()
+            chan.close()
           }
           return cb()
         }
 
         case consts.type.OUT_RESET:
         case consts.type.IN_RESET: {
+          const chan = this._channels[id]
+          if (chan) {
+            chan.reset()
+          }
           return cb()
         }
       }
