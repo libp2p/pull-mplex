@@ -1,5 +1,5 @@
 {
-  "name": "mplex",
+  "name": "pull-plex",
   "version": "0.0.1",
   "description": "multiplex implementation of https://github.com/libp2p/mplex",
   "main": "src/index.js",
@@ -15,10 +15,15 @@
     "coverage": "aegir coverage",
     "coverage-publish": "aegir coverage --provider coveralls"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "dryajov@gmail.com",
+  "license": "MIT",
   "devDependencies": {
-    "aegir": "^13.0.6"
+    "aegir": "^13.0.6",
+    "pull-abortable": "^4.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dryajov/pull-plex.git"
   },
   "dependencies": {
     "async": "^2.6.0",
