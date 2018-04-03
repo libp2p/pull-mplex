@@ -31,7 +31,7 @@ class Channel extends EE {
         endedLocal: this._endedLocal,
         endedRemote: this._endedRemote,
         initiator: this._initiator,
-        data: data || ''
+        data: (data && data.toString()) || ''
       })
     }
 
@@ -101,6 +101,7 @@ class Channel extends EE {
   push (data) {
     this._log('push', data)
     this._msgs.push(data)
+    log('buffer', this._msgs.buffer)
   }
 
   // close for reading
