@@ -9,12 +9,16 @@ const through = require('pull-through')
 exports.encode = () => {
   return pull(
     through(function (msg) {
-      const data = Buffer.concat([
-        Buffer.from(varint.encode(msg[0] << 3 | msg[1])),
-        Buffer.from(varint.encode(Buffer.byteLength(msg[2]))),
-        Buffer.from(msg[2])
-      ])
-      this.queue(data)
+      const seq = [Buffer.from(varint.encode(msg[0] << 3 | msg[1]))]
+
+      if (msg[2]) {
+        seq.push(Buffer.from(varint.encode(Buffer.byteLength(msg[2]))))
+        seq.push(Buffer.from(msg[2]))
+      } else {
+        seq.push(Buffer.from(varint.encode(0)))
+      }
+
+      this.queue(Buffer.concat(seq))
     })
   )
 }
@@ -24,12 +28,18 @@ exports.decode = () => {
     let offset = 0
     const h = varint.decode(msg)
     offset += varint.decode.bytes
-    const length = varint.decode(msg, offset)
-    offset += varint.decode.bytes
+    let length
+    let data
+    try {
+      length = varint.decode(msg, offset)
+      offset += varint.decode.bytes
+      data = msg.slice(offset, offset + length)
+    } catch (err) {} // ignore if data is empty
+
     const decoded = {
       id: h >> 3,
       type: h & 7,
-      data: msg.slice(offset, offset + length)
+      data
     }
 
     return [msg.slice(offset + length), decoded]

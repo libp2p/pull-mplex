@@ -156,8 +156,7 @@ class Channel extends EE {
       this._id,
       this._initiator
         ? consts.type.OUT_CLOSE
-        : consts.type.IN_CLOSE,
-      ''
+        : consts.type.IN_CLOSE
     ])
   }
 
@@ -172,8 +171,7 @@ class Channel extends EE {
       this._id,
       this._initiator
         ? consts.type.OUT_RESET
-        : consts.type.IN_RESET,
-      ''
+        : consts.type.IN_RESET
     ])
   }
 }
