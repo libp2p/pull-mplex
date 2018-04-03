@@ -20,21 +20,23 @@ class Plex extends EE {
     this._initiator = !!initiator
     this._chanId = this._initiator ? 1 : 0
     this._channels = {}
+    this._destroyed = false
 
     this._log = (name, data) => {
       log({
-        src: 'channel.js',
+        src: 'index.js',
         op: name,
         channel: this._name,
         id: this._id,
         localEnded: this._endedLocal,
         remoteEnded: this._endedRemote,
         initiator: this._initiator,
-        data: data || ''
+        data: (data && data.toString()) || ''
       })
     }
 
     this._chandata = pushable((err) => {
+      if (this._destroyed) { return }
       this.destroy(err || new Error('Underlying stream has been closed'))
     })
 
@@ -51,7 +53,7 @@ class Plex extends EE {
       utils.decode(),
       (read) => {
         const next = (end, data) => {
-          if (end === true) { return }
+          if (end === true || this._destroyed) { return }
           if (end) { return this.destroy(end) }
           this._handle(data)
           return read(null, next)
@@ -75,19 +77,28 @@ class Plex extends EE {
       .keys(this._channels)
       .forEach((id) => {
         const chan = this._channels[id]
-        chan.reset(err)
+        if (err) {
+          chan.reset(err)
+        } else {
+          chan.close()
+        }
         delete this._channels[id]
       })
+
+    this._destroyed = true
+    this._chandata.end(err) // close source
 
     if (err) {
       return setImmediate(() => this.emit('error', err))
     }
 
-    this.emit('close')
+    this.emit('close', err)
   }
 
   push (data) {
+    log('push', data)
     this._chandata.push(data)
+    log('buffer', this._chandata.buffer)
   }
 
   _nextChanId () {
