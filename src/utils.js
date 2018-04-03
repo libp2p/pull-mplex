@@ -6,37 +6,30 @@ const lp = require('pull-length-prefixed')
 const cat = require('pull-cat')
 const through = require('pull-through')
 
-exports.encodeMsg = (id, type, data, cb) => {
-  return pull(
-    cat([
-      pull.values([varint.encode(id << 3 | type)]),
-      pull(
-        pull.values([Buffer.from(data)]),
-        lp.encode()
-      )
-    ]),
-    pull.flatten(),
-    pull.collect((err, data) => {
-      if (err) { return cb(err) }
-      cb(null, Buffer.from(data))
-    })
-  )
+exports.encode = () => {
+  return through(function (msg) {
+    const data = Buffer.concat([
+      Buffer.from(varint.encode(msg[0] << 3 | msg[1])),
+      Buffer.from(varint.encode(Buffer.byteLength(msg[2]))),
+      Buffer.from(msg[2])
+    ])
+    this.queue(data)
+  })
 }
 
-exports.decodeMsg = (msg, cb) => {
-  let h = null
-  return pull(
-    pull.values([msg]),
-    through(function (buf) {
-      const header = varint.decode(buf)
-      h = { id: header >> 3, type: header & 7 }
-      this.queue(buf.slice(varint.decode.bytes))
-      this.queue(null)
-    }),
-    lp.decode(),
-    pull.collect((err, data) => {
-      if (err) { return cb(err) }
-      cb(null, [h, data[0]])
-    })
-  )
+exports.decode = () => {
+  return through(function (msg) {
+    let offset = 0
+    const h = varint.decode(msg)
+    offset += varint.decode.bytes
+    const length = varint.decode(msg.slice(offset))
+    offset += varint.decode.bytes
+    const decoded = {
+      id: h >> 3,
+      type: h & 7,
+      data: msg.slice(offset /*, length*/) // somehow length gets offset and truncates the buffer
+    }
+
+    this.queue(decoded)
+  })
 }

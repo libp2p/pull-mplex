@@ -3,7 +3,6 @@
 const pushable = require('pull-pushable')
 
 const consts = require('./consts')
-const utils = require('./utils')
 const EE = require('events')
 
 const debug = require('debug')
@@ -41,9 +40,9 @@ class Channel extends EE {
     this._msgs = pushable((err) => {
       this._log('source closed', err)
       if (this._reset) { return } // don't try closing the channel on reset
-      this.endChan((err) => {
-        if (err) { setImmediate(() => this.emit('error', err)) }
-      })
+
+      this.endChan()
+      if (err) { this.emit('error', err) }
     })
 
     this._source = this._msgs
@@ -59,28 +58,20 @@ class Channel extends EE {
 
         // source ended, close the stream
         if (end === true) {
-          this.endChan((err) => {
-            if (err) {
-              log.err(err)
-              setImmediate(() => this.emit('error', err))
-            }
-          })
-          return
+          return this.endChan()
         }
 
         // source errored, reset stream
         if (end || this._reset) {
-          this.resetChan(() => {
-            setImmediate(() => this.emit('error', end || this._reset))
-            this.reset()
-          })
+          this.resetChan()
+          this.emit('error', end || this._reset)
+          this.reset()
           return
         }
 
         // just send
-        return this.sendMsg(data, (err) => {
-          read(err, next)
-        })
+        this.sendMsg(data)
+        return read(null, next)
       }
 
       read(null, next)
@@ -126,97 +117,63 @@ class Channel extends EE {
     this.close(this._reset)
   }
 
-  openChan (cb) {
+  openChan () {
     this._log('openChan')
 
-    this.open = true // avoid duplicate open msgs
-    utils.encodeMsg(this._id,
-      consts.NEW,
-      this._name,
-      (err, data) => {
-        if (err) {
-          log.err(err)
-          this.open = false
-          return cb(err)
-        }
-
-        this._plex.push(data)
-        cb(null, this)
-      })
+    this.open = true
+    this._plex.push([
+      this._id,
+      consts.type.NEW,
+      this._name
+    ])
   }
 
-  sendMsg (data, cb) {
+  sendMsg (data) {
     this._log('sendMsg', data)
 
     if (!this.open) {
-      return this.openChan((err) => {
-        if (err) {
-          log.err(err)
-          return cb(err)
-        }
-
-        this.sendMsg(data, cb)
-      })
+      this.openChan()
     }
 
-    utils.encodeMsg(this._id,
+    this._plex.push([
+      this._id,
       this._initiator
         ? consts.type.OUT_MESSAGE
         : consts.type.IN_MESSAGE,
-      data,
-      (err, data) => {
-        if (err) {
-          log.err(err)
-          return cb(err)
-        }
-
-        this._plex.push(data)
-        cb()
-      })
+      data
+    ])
   }
 
-  endChan (cb) {
+  endChan () {
     this._log('endChan')
 
     if (!this.open) {
-      return cb()
+      return
     }
 
-    utils.encodeMsg(this._id,
+    this._plex.push([
+      this._id,
       this._initiator
         ? consts.type.OUT_CLOSE
         : consts.type.IN_CLOSE,
-      '',
-      (err, data) => {
-        if (err) {
-          log.err(err)
-          return cb(err)
-        }
-        this._plex.push(data)
-        cb()
-      })
+      ''
+    ])
   }
 
-  resetChan (cb) {
+  resetChan () {
     this._log('endChan')
 
     if (!this.open) {
-      return cb()
+      return
     }
 
-    utils.encodeMsg(this._id,
+    this._plex.push([
+      this._id,
       this._initiator
         ? consts.type.OUT_RESET
         : consts.type.IN_RESET,
-      '',
-      (err, data) => {
-        if (err) {
-          log.err(err)
-          return cb(err)
-        }
-        this._plex.push(data)
-        cb()
-      })
+      ''
+    ])
   }
 }
 
