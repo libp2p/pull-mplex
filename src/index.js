@@ -37,7 +37,7 @@ class Plex extends EE {
 
     this._chandata = pushable((err) => {
       if (this._destroyed) { return }
-      this.destroy(err || new Error('Underlying stream has been closed'))
+      this.destroy()
     })
 
     if (onChan) {
@@ -67,11 +67,11 @@ class Plex extends EE {
     return this._initiator
   }
 
-  get initiator () {
-    return this._initiator
-  }
-
   destroy (err) {
+    this._destroyed = true
+    err = err || new Error('Underlying stream has been closed')
+    this._chandata.end(err)
+
     // propagate close to channels
     Object
       .keys(this._channels)
@@ -85,14 +85,11 @@ class Plex extends EE {
         delete this._channels[id]
       })
 
-    this._destroyed = true
-    this._chandata.end(err) // close source
-
     if (err) {
-      return setImmediate(() => this.emit('error', err))
+      setImmediate(() => this.emit('error', err))
     }
 
-    this.emit('close', err)
+    this.emit('close')
   }
 
   push (data) {
