@@ -6,6 +6,11 @@ const lp = require('pull-length-prefixed')
 const cat = require('pull-cat')
 const through = require('pull-through')
 
+const debug = require('debug')
+
+const log = debug('pull-plex:utils')
+log.err = debug('pull-plex:utils:err')
+
 exports.encode = () => {
   return pull(
     through(function (msg) {
@@ -33,8 +38,15 @@ exports.decode = () => {
     try {
       length = varint.decode(msg, offset)
       offset += varint.decode.bytes
+
+      if (length > msg.length) {
+        throw new Error('partial buffer, need more data')
+      }
+
       data = msg.slice(offset, offset + length)
-    } catch (err) {} // ignore if data is empty
+    } catch (err) {
+      log.err(err)
+    } // ignore if data is empty
 
     const decoded = {
       id: h >> 3,
