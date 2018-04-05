@@ -20,7 +20,7 @@ const consts = require('../src/consts')
 const series = require('async/series')
 
 describe('plex', () => {
-  it.only(`destroy should close both ends`, (done) => {
+  it(`reset should close both ends`, (done) => {
     const p = pair()
 
     const plex1 = new Plex(true)
@@ -44,17 +44,19 @@ describe('plex', () => {
     plex2.on('close', () => {
       expect().mark()
     })
-
-    plex1.destroy()
+    plex1.reset()
   })
 
-  it(`channel id should be correct`, () => [1, 0].forEach((type) => {
-    const initiator = Boolean(type)
-    const plex = new Plex(initiator)
+  describe(`check id`, () => [true, false].forEach((initiator) => {
+    it(`id should be ${initiator ? 'odd' : 'even'}`, () => {
+      const plex = new Plex(initiator)
 
-    const times = 10
-    for (let i = 0; i < times; i++) {
-      expect(Boolean(plex._nextChanId() & 1)).to.be.eql(initiator)
-    }
+      const times = 100
+      for (let i = 0; i < times; i++) {
+        const id = plex._nextChanId()
+        console.dir(id)
+        expect(Boolean(id & 1)).to.be.eql(initiator)
+      }
+    })
   }))
 })

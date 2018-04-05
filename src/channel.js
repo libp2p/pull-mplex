@@ -7,8 +7,8 @@ const EE = require('events')
 
 const debug = require('debug')
 
-const log = debug('pull-plex')
-log.err = debug('pull-plex:err')
+const log = debug('pull-plex:chan')
+log.err = debug('pull-plex:chan:err')
 
 class Channel extends EE {
   constructor (id, name, plex, initiator, open) {
@@ -24,7 +24,6 @@ class Channel extends EE {
 
     this._log = (name, data) => {
       log({
-        src: 'channel.js',
         op: name,
         channel: this._name,
         id: this._id,
@@ -42,7 +41,6 @@ class Channel extends EE {
       if (this._reset) { return } // don't try closing the channel on reset
 
       this.endChan()
-      if (err) { this.emit('error', err) }
     })
 
     this._source = this._msgs
@@ -57,9 +55,7 @@ class Channel extends EE {
         this._endedLocal = end || false
 
         // source ended, close the stream
-        if (end === true) {
-          return this.endChan()
-        }
+        if (end === true) { return this.endChan() }
 
         // source errored, reset stream
         if (end || this._reset) {
@@ -108,8 +104,8 @@ class Channel extends EE {
   close (err) {
     this._log('close', err)
     this.emit('close', err)
-    this._endedRemote = err || true
-    this._msgs.end(err)
+    this._endedRemote = err
+    this._msgs.end(this._endedRemote)
   }
 
   reset (err) {
