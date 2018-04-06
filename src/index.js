@@ -7,7 +7,7 @@ const EE = require('events')
 
 const Channel = require('./channel')
 const consts = require('./consts')
-const utils = require('./utils')
+const coder = require('./coder')
 
 const debug = require('debug')
 
@@ -17,6 +17,12 @@ log.err = debug('pull-plex:err')
 class Plex extends EE {
   constructor (initiator, onChan) {
     super()
+
+    if (typeof initiator === 'function') {
+      onChan = initiator
+      initiator = true
+    }
+
     this._initiator = !!initiator
     this._chanId = this._initiator ? 1 : 0
     this._channels = {}
@@ -45,11 +51,11 @@ class Plex extends EE {
 
     this.source = pull(
       this._chandata,
-      utils.encode()
+      coder.encode()
     )
 
     this.sink = pull(
-      utils.decode(),
+      coder.decode(),
       (read) => {
         const next = (end, data) => {
           if (this._endedLocal) { return }
@@ -76,7 +82,7 @@ class Plex extends EE {
       setImmediate(() => this.emit('error', err))
     }
 
-    err = err || new Error('Underlying stream has been closed')
+    err = err || 'Underlying stream has been closed'
     this._endedLocal = true
 
     // propagate close to channels
@@ -84,7 +90,7 @@ class Plex extends EE {
       .keys(this._channels)
       .forEach((id) => {
         const chan = this._channels[id]
-        chan.close(err)
+        if (chan) { return chan.close(err) }
       })
 
     this.emit('close')
@@ -95,7 +101,7 @@ class Plex extends EE {
   }
 
   reset (err) {
-    err = err || new Error('Underlying stream has been closed')
+    err = err || 'Underlying stream has been closed'
     this._chandata.end(err)
     this.close(err)
   }
@@ -107,7 +113,9 @@ class Plex extends EE {
   }
 
   _nextChanId () {
-    return this._chanId += 2
+    const id = this._chanId
+    this._chanId += 2
+    return id
   }
 
   createStream (name) {
@@ -127,19 +135,29 @@ class Plex extends EE {
       open = false
     }
 
-    id = id || this._nextChanId(initiator)
+    id = typeof id === 'number' ? id : this._nextChanId(initiator)
+    name = typeof name === 'number' ? name.toString() : name
+    name = name == null ? id.toString() : name
+    name = !name.length ? id.toString() : name
     const chan = new Channel(id,
-      name || id.toString(),
+      name,
       this,
       initiator,
       open || false)
 
     chan.once('close', () => {
+      this._log('deleting channel', JSON.stringify({
+        channel: this._name,
+        id: id,
+        endedLocal: this._channels[id]._endedLocal,
+        endedRemote: this._channels[id]._endedRemote,
+        initiator: this._channels[id]._initiator
+      }))
       delete this._channels[id]
     })
 
     if (this._channels[id]) {
-      return this.emit('error', new Error(`channel with id ${id} already exist!`))
+      return this.emit('error', `channel with id ${id} already exist!`)
     }
 
     this._channels[id] = chan
@@ -151,11 +169,6 @@ class Plex extends EE {
     const { id, type, data } = msg
     switch (type) {
       case consts.type.NEW: {
-        if (!this._initiator && (id & 1) !== 1) {
-          return this.emit('error',
-            new Error(`Initiator can't have even id's!`))
-        }
-
         const chan = this._newStream(id, this._initiator, true, data.toString())
         setImmediate(() => this.emit('stream', chan))
         return

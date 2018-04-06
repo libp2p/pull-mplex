@@ -28,41 +28,63 @@ exports.encode = () => {
   )
 }
 
+let States = {
+  PARSING: 0,
+  READING: 1
+}
+let state = States.PARSING
 exports.decode = () => {
   const decode = (msg) => {
     let offset = 0
     const h = varint.decode(msg)
     offset += varint.decode.bytes
-    let length
-    let data
+    let length, data
     try {
       length = varint.decode(msg, offset)
       offset += varint.decode.bytes
-
-      if (length > msg.length) {
-        throw new Error('partial buffer, need more data')
-      }
-
-      data = msg.slice(offset, offset + length)
     } catch (err) {
-      log.err(err)
-    } // ignore if data is empty
-
-    const decoded = {
-      id: h >> 3,
-      type: h & 7,
-      data
+      log.err(err) // ignore if data is empty
     }
 
-    return [msg.slice(offset + length), decoded]
+    const message = {
+      id: h >> 3,
+      type: h & 7,
+      data: Buffer.alloc(length) // instead of allocating a new buff use a mem pool here
+    }
+
+    state = States.READING
+    return [msg.slice(offset), message, length]
   }
 
+  const read = (msg, data, length) => {
+    let left = length - msg.length
+    if (msg.length > 0) {
+      const buff = left > 0 ? msg.slice() : msg.slice(0, length)
+      buff.copy(data)
+      msg = msg.slice(buff.length)
+    }
+    if (left <= 0) { state = States.PARSING }
+    return [left, msg, data]
+  }
+
+  let offset = 0
+  let message = {}
+  let length = 0
   return through(function (msg) {
-    let offset = 0
-    let decoded
     while (msg.length) {
-      [msg, decoded] = decode(msg)
-      this.queue(decoded)
+      if (States.PARSING === state) {
+        [msg, message, length] = decode(msg)
+      }
+
+      if (States.READING === state) {
+        [length, msg, message.data] = read(msg, message.data, length)
+        if (length <= 0 && States.PARSING === state) {
+          this.queue(message)
+          offset = 0
+          message = {}
+          length = 0
+        }
+      }
     }
   })
 }

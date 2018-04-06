@@ -39,6 +39,7 @@ class Channel extends EE {
     this._msgs = pushable((err) => {
       this._log('source closed', err)
       if (this._reset) { return } // don't try closing the channel on reset
+      if (err) { setImmediate(() => this.emit('error', err)) }
 
       this.endChan()
     })
@@ -110,7 +111,7 @@ class Channel extends EE {
 
   reset (err) {
     this._log('reset', err)
-    this._reset = err || new Error('channel reset!')
+    this._reset = err || 'channel reset!'
     this.close(this._reset)
   }
 
@@ -135,8 +136,8 @@ class Channel extends EE {
     this._plex.push([
       this._id,
       this._initiator
-        ? consts.type.OUT_MESSAGE
-        : consts.type.IN_MESSAGE,
+        ? consts.type.IN_MESSAGE
+        : consts.type.OUT_MESSAGE,
       data
     ])
   }
@@ -151,8 +152,8 @@ class Channel extends EE {
     this._plex.push([
       this._id,
       this._initiator
-        ? consts.type.OUT_CLOSE
-        : consts.type.IN_CLOSE
+        ? consts.type.IN_CLOSE
+        : consts.type.OUT_CLOSE
     ])
   }
 
@@ -166,8 +167,8 @@ class Channel extends EE {
     this._plex.push([
       this._id,
       this._initiator
-        ? consts.type.OUT_RESET
-        : consts.type.IN_RESET
+        ? consts.type.IN_RESET
+        : consts.type.OUT_RESET
     ])
   }
 }
