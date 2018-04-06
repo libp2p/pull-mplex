@@ -14,10 +14,6 @@ const pushable = require('pull-pushable')
 const abortable = require('pull-abortable')
 
 const Plex = require('../src')
-const utils = require('../src/utils')
-const consts = require('../src/consts')
-
-const series = require('async/series')
 
 function closeAndWait (stream) {
   pull(
@@ -94,7 +90,6 @@ describe('channel', () => {
     pull(plex2, p[1], plex2)
 
     const chan1 = plex1.createStream('stream 1')
-
     plex2.on('stream', (stream) => {
       pull(
         stream,
