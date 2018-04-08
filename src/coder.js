@@ -2,8 +2,6 @@
 
 const pull = require('pull-stream')
 const varint = require('varint')
-const lp = require('pull-length-prefixed')
-const cat = require('pull-cat')
 const through = require('pull-through')
 
 const debug = require('debug')
@@ -15,15 +13,13 @@ exports.encode = () => {
   return pull(
     through(function (msg) {
       const seq = [Buffer.from(varint.encode(msg[0] << 3 | msg[1]))]
+      const len = msg[2] ? Buffer.byteLength(msg[2]) : 0
+      seq.push(Buffer.from(varint.encode(len))) // send empty body
+      this.queue(Buffer.concat(seq)) // send header
 
-      if (msg[2]) {
-        seq.push(Buffer.from(varint.encode(Buffer.byteLength(msg[2]))))
-        seq.push(Buffer.from(msg[2]))
-      } else {
-        seq.push(Buffer.from(varint.encode(0)))
+      if (len) {
+        this.queue(msg[2])
       }
-
-      this.queue(Buffer.concat(seq))
     })
   )
 }
@@ -35,32 +31,33 @@ let States = {
 let state = States.PARSING
 exports.decode = () => {
   const decode = (msg) => {
-    let offset = 0
-    const h = varint.decode(msg)
-    offset += varint.decode.bytes
-    let length, data
     try {
+      let offset = 0
+      let length = 0
+      const h = varint.decode(msg)
+      offset += varint.decode.bytes
       length = varint.decode(msg, offset)
       offset += varint.decode.bytes
+      const message = {
+        id: h >> 3,
+        type: h & 7,
+        data: Buffer.alloc(length) // instead of allocating a new buff use a mem pool here
+      }
+
+      state = States.READING
+      return [msg.slice(offset), message, length]
     } catch (err) {
       log.err(err) // ignore if data is empty
+      return [msg, undefined, undefined]
     }
-
-    const message = {
-      id: h >> 3,
-      type: h & 7,
-      data: Buffer.alloc(length) // instead of allocating a new buff use a mem pool here
-    }
-
-    state = States.READING
-    return [msg.slice(offset), message, length]
   }
 
+  let pos = 0
   const read = (msg, data, length) => {
     let left = length - msg.length
     if (msg.length > 0) {
-      const buff = left > 0 ? msg.slice() : msg.slice(0, length)
-      buff.copy(data)
+      const buff = msg.slice(0, length - left)
+      pos += buff.copy(data, pos)
       msg = msg.slice(buff.length)
     }
     if (left <= 0) { state = States.PARSING }
@@ -68,12 +65,23 @@ exports.decode = () => {
   }
 
   let offset = 0
-  let message = {}
+  let message = null
   let length = 0
+  let buffer = null
   return through(function (msg) {
     while (msg.length) {
       if (States.PARSING === state) {
-        [msg, message, length] = decode(msg)
+        if (!buffer) {
+          buffer = Buffer.from(msg)
+        } else {
+          buffer = Buffer.concat([buffer, msg])
+        }
+
+        [msg, message, length] = decode(buffer)
+        if (!message && !length) {
+          return // read more
+        }
+        buffer = null
       }
 
       if (States.READING === state) {
@@ -83,6 +91,7 @@ exports.decode = () => {
           offset = 0
           message = {}
           length = 0
+          pos = 0
         }
       }
     }

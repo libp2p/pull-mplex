@@ -14,7 +14,7 @@ class Channel extends EE {
   constructor (id, name, plex, initiator, open) {
     super()
     this._id = id
-    this._name = name || this._id.toString()
+    this._name = name
     this._plex = plex
     this._open = open
     this._initiator = initiator
@@ -118,11 +118,16 @@ class Channel extends EE {
   openChan () {
     this._log('openChan')
 
+    let name
+    if (this._name && !Buffer.isBuffer(this._name)) {
+      name = Buffer.from(this._name)
+    }
+
     this.open = true
     this._plex.push([
       this._id,
       consts.type.NEW,
-      this._name
+      name != this._id.toString() ? name : null
     ])
   }
 
@@ -133,6 +138,9 @@ class Channel extends EE {
       this.openChan()
     }
 
+    if (!Buffer.isBuffer(data)) {
+      data = Buffer.from(data)
+    }
     this._plex.push([
       this._id,
       this._initiator
@@ -153,7 +161,8 @@ class Channel extends EE {
       this._id,
       this._initiator
         ? consts.type.IN_CLOSE
-        : consts.type.OUT_CLOSE
+        : consts.type.OUT_CLOSE,
+      Buffer.from([0])
     ])
   }
 
