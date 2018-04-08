@@ -104,9 +104,9 @@ class Channel extends EE {
   // close for reading
   close (err) {
     this._log('close', err)
-    this.emit('close', err)
-    this._endedRemote = err
+    this._endedRemote = err || true
     this._msgs.end(this._endedRemote)
+    this.emit('close', err)
   }
 
   reset (err) {
