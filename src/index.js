@@ -170,7 +170,7 @@ class Plex extends EE {
     switch (type) {
       case consts.type.NEW: {
         const chan = this._newStream(id, this._initiator, true, data.toString())
-        setImmediate(() => this.emit('stream', chan))
+        setImmediate(() => this.emit('stream', chan, id))
         return
       }
 
