@@ -55,6 +55,7 @@ exports.decode = () => {
   let pos = 0
   const read = (msg, data, length) => {
     let left = length - msg.length
+    if (left < 0) { left = 0 }
     if (msg.length > 0) {
       const buff = msg.slice(0, length - left)
       pos += buff.copy(data, pos)
