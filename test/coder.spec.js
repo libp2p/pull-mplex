@@ -19,7 +19,7 @@ describe('coder', () => {
       coder.encode(),
       pull.collect((err, data) => {
         expect(err).to.not.exist()
-        expect(data[0]).to.be.eql(Buffer.from('8801023137', 'hex'))
+        expect(data[0]).to.be.eql(Buffer.from('880102', 'hex'))
       })
     )
   })
