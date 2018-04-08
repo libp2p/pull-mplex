@@ -24,7 +24,7 @@ class Plex extends EE {
     }
 
     this._initiator = !!initiator
-    this._chanId = this._initiator ? 1 : 0
+    this._chanId = this._initiator ? 0 : 1
     this._channels = {}
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
@@ -119,6 +119,9 @@ class Plex extends EE {
   }
 
   createStream (name) {
+    if (typeof name === 'number') {
+      name = name.toString()
+    }
     return this._newStream(null, this._initiator, false, name)
   }
 
@@ -136,9 +139,6 @@ class Plex extends EE {
     }
 
     id = typeof id === 'number' ? id : this._nextChanId(initiator)
-    name = typeof name === 'number' ? name.toString() : name
-    name = name == null ? id.toString() : name
-    name = !name.length ? id.toString() : name
     const chan = new Channel(id,
       name,
       this,
