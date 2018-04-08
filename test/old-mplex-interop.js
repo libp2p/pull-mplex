@@ -265,7 +265,7 @@ describe('node stream multiplex interop', () => {
     })
   })
 
-  it('chunks', (done) => {
+  it('new2old: chunks', (done) => {
     let times = 100
     ;(function chunk () {
       const collect = collector(function () {
@@ -276,9 +276,10 @@ describe('node stream multiplex interop', () => {
         }
       })
 
-      const plex1 = new MplexCore()
-      const stream1 = plex1.createStream()
-      const stream2 = plex1.createStream()
+      const pullPlex = new Plex(true)
+      const plex1 = toStream(pullPlex)
+      const stream1 = toStream(pullPlex.createStream())
+      const stream2 = toStream(pullPlex.createStream())
 
       const plex2 = new MplexCore(function onStream (stream, id) {
         stream.pipe(collect())
@@ -314,8 +315,60 @@ describe('node stream multiplex interop', () => {
     }
   })
 
+  it('old2new: chunks', (done) => {
+    let times = 100
+    ;(function chunk () {
+      const collect = collector(function () {
+        if (--times === 0) {
+          done()
+        } else {
+          chunk()
+        }
+      })
+
+      const plex1 = new MplexCore({ initiator: true })
+      const stream1 = plex1.createStream()
+      const stream2 = plex1.createStream()
+
+      const pullStream = new Plex(false, function onStream (pullStream, id) {
+        const stream = toStream(pullStream)
+        stream.pipe(collect())
+      })
+      const plex2 = toStream(pullStream)
+
+      plex1.pipe(through(function (buf, enc, next) {
+        const bufs = chunky(buf)
+        for (let i = 0; i < bufs.length; i++) this.push(bufs[i])
+        next()
+      })).pipe(plex2)
+
+      stream1.write(Buffer.from('hello'))
+      stream2.write(Buffer.from('world'))
+      stream1.end()
+      stream2.end()
+    })()
+
+    function collector (cb) {
+      let pending = 2
+      const results = []
+
+      return function () {
+        return concat(function (data) {
+          results.push(data.toString())
+          if (--pending === 0) {
+            results.sort()
+            expect(results[0].toString()).to.equal('hello')
+            expect(results[1].toString()).to.equal('world')
+            cb()
+          }
+        })
+      }
+    }
+  })
+
   it('prefinish + corking', (done) => {
-    const plex = new MplexCore()
+    const pullPlex = new Plex(true)
+    const plex = toStream(pullPlex)
     let async = false
 
     plex.on('prefinish', function () {
