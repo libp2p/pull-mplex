@@ -28,8 +28,15 @@ let States = {
   PARSING: 0,
   READING: 1
 }
-let state = States.PARSING
+
 exports.decode = () => {
+  let state = States.PARSING
+  let offset = 0
+  let message = null
+  let length = 0
+  let buffer = null
+  let pos = 0
+  
   const decode = (msg) => {
     try {
       let offset = 0
@@ -52,8 +59,12 @@ exports.decode = () => {
     }
   }
 
-  let pos = 0
   const read = (msg, data, length) => {
+    if (length <= 0) {
+      state = States.PARSING
+      return [0, msg, data]
+    }
+
     let left = length - msg.length
     if (left < 0) { left = 0 }
     if (msg.length > 0) {
@@ -65,10 +76,6 @@ exports.decode = () => {
     return [left, msg, data]
   }
 
-  let offset = 0
-  let message = null
-  let length = 0
-  let buffer = null
   return through(function (msg) {
     while (msg.length) {
       if (States.PARSING === state) {
@@ -90,7 +97,7 @@ exports.decode = () => {
         if (length <= 0 && States.PARSING === state) {
           this.queue(message)
           offset = 0
-          message = {}
+          message = null
           length = 0
           pos = 0
         }

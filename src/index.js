@@ -24,7 +24,7 @@ class Plex extends EE {
     }
 
     this._initiator = !!initiator
-    this._chanId = this._initiator ? 0 : 1
+    this._chanId = this._initiator ? 1 : 0
     this._channels = {}
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
