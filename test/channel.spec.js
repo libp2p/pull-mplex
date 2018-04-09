@@ -12,7 +12,11 @@ const pull = require('pull-stream')
 const pair = require('pull-pair/duplex')
 const pushable = require('pull-pushable')
 const abortable = require('pull-abortable')
+const through = require('pull-through')
+const defer = require('pull-defer')
+const lp = require('pull-length-prefixed')
 
+const Connection = require('interface-connection').Connection
 const Plex = require('../src')
 
 function closeAndWait (stream) {
@@ -278,5 +282,206 @@ describe('channel', () => {
 
     closeAndWait(dialerConn)
     closeAndWait(listenerConn)
+  })
+
+  it('should be able to send and receive from same stream', (done) => {
+    const p = pair()
+
+    const plex1 = new Plex(true)
+    const plex2 = new Plex(false)
+
+    pull(plex1, p[0], plex1)
+    pull(plex2, p[1], plex2)
+
+    plex2.on('stream', (stream) => {
+      pull(
+        stream,
+        through(function (data) {
+          this.queue(data.toString().toUpperCase())
+        }),
+        stream
+      )
+    })
+
+    const stream = plex1.createStream('stream 1')
+    pull(
+      pull.values([Buffer.from('hello from plex1!!')]),
+      stream,
+      pull.collect((err, data) => {
+        expect(err).to.not.exist()
+        expect(data[0].toString()).to.eql('HELLO FROM PLEX1!!')
+        done()
+      })
+    )
+  })
+
+  it('should be able to send and receive from same stream with delayed pipe', (done) => {
+    const p = pair()
+
+    const plex1 = new Plex(true)
+    const plex2 = new Plex(false)
+
+    pull(plex1, p[0], plex1)
+    pull(plex2, p[1], plex2)
+
+    plex2.on('stream', (stream) => {
+      setTimeout(() => pull(
+        stream,
+        through(function (data) {
+          this.queue(data.toString().toUpperCase())
+        }),
+        stream
+      ), 800)
+    })
+
+    const stream = plex1.createStream('stream 1')
+    pull(
+      pull.values([Buffer.from('hello from plex1!!')]),
+      stream,
+      pull.collect((err, data) => {
+        expect(err).to.not.exist()
+        expect(data[0].toString()).to.eql('HELLO FROM PLEX1!!')
+        done()
+      })
+    )
+  })
+
+  it('should be able to send and receive from same stream with deferred stream', (done) => {
+    const p = pair()
+
+    const plex1 = new Plex(true)
+    const plex2 = new Plex(false)
+
+    pull(plex1, p[0], plex1)
+    pull(plex2, p[1], plex2)
+
+    const stream2 = defer.duplex()
+    plex2.on('stream', (_stream) => {
+      stream2.resolve(_stream)
+    })
+
+    pull(
+      stream2,
+      through(function (data) {
+        this.queue(data.toString().toUpperCase())
+      }),
+      stream2
+    )
+
+    const stream1 = plex1.createStream('stream 1')
+    pull(
+      pull.values([Buffer.from('hello from plex1!!')]),
+      stream1,
+      pull.collect((err, data) => {
+        expect(err).to.not.exist()
+        expect(data[0].toString()).to.eql('HELLO FROM PLEX1!!')
+        done()
+      })
+    )
+  })
+
+  it('should be able to send and receive from same stream with deferred and delayed stream', (done) => {
+    const p = pair()
+
+    const plex1 = new Plex(true)
+    const plex2 = new Plex(false)
+
+    pull(plex1, p[0], plex1)
+    pull(plex2, p[1], plex2)
+
+    const stream2 = defer.duplex()
+    plex2.on('stream', (_stream) => {
+      stream2.resolve(_stream)
+    })
+
+    setTimeout(() => pull(
+      stream2,
+      through(function (data) {
+        this.queue(data.toString().toUpperCase())
+      }),
+      stream2
+    ), 800)
+
+    const stream1 = plex1.createStream('stream 1')
+    pull(
+      pull.values([Buffer.from('hello from plex1!!')]),
+      stream1,
+      pull.collect((err, data) => {
+        expect(err).to.not.exist()
+        expect(data[0].toString()).to.eql('HELLO FROM PLEX1!!')
+        done()
+      })
+    )
+  })
+
+  it('should work with connection', (done) => {
+    const p = pair()
+
+    const plex1 = new Plex(true)
+    const plex2 = new Plex(false)
+
+    pull(plex1, p[0], plex1)
+    pull(plex2, p[1], plex2)
+
+    plex2.on('stream', (stream) => {
+      const conn = new Connection(stream)
+      pull(
+        conn,
+        through(function (data) {
+          this.queue(data.toString().toUpperCase())
+        }),
+        conn
+      )
+    })
+
+    const stream = plex1.createStream('stream 1')
+    const conn = new Connection(stream)
+    pull(
+      pull.values([Buffer.from('hello from plex1!!')]),
+      conn,
+      pull.collect((err, data) => {
+        expect(err).to.not.exist()
+        expect(data[0].toString()).to.eql('HELLO FROM PLEX1!!')
+        done()
+      })
+    )
+  })
+
+  it('should work with connection length prefixed', (done) => {
+    const p = pair()
+
+    const plex1 = new Plex(true)
+    const plex2 = new Plex(false)
+
+    pull(plex1, p[0], plex1)
+    pull(plex2, p[1], plex2)
+
+    plex2.on('stream', (stream) => {
+      const conn = new Connection(stream)
+      pull(
+        conn,
+        lp.decode(),
+        through(function (data) {
+          this.queue(Buffer.from(data.toString().toUpperCase()))
+        }),
+        lp.encode(),
+        conn
+      )
+    })
+
+    const stream = plex1.createStream('stream 1')
+    const conn = new Connection(stream)
+
+    pull(
+      pull.values([Buffer.from('hello from plex1!!')]),
+      lp.encode(),
+      conn,
+      lp.decode(),
+      pull.collect((err, data) => {
+        expect(err).to.not.exist()
+        expect(data[0].toString()).to.eql('HELLO FROM PLEX1!!')
+        done()
+      })
+    )
   })
 })
