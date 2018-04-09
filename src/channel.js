@@ -25,7 +25,7 @@ class Channel extends EE {
     this._log = (name, data) => {
       log({
         op: name,
-        channel: this._name,
+        name: this._name,
         id: this._id,
         endedLocal: this._endedLocal,
         endedRemote: this._endedRemote,
@@ -38,10 +38,12 @@ class Channel extends EE {
 
     this._msgs = pushable((err) => {
       this._log('source closed', err)
+      if (err && typeof err !== 'boolean') {
+        setImmediate(() => this.emit('error', err))
+      }
       if (this._reset) { return } // don't try closing the channel on reset
-      if (err) { setImmediate(() => this.emit('error', err)) }
 
-      this.endChan()
+      // this.endChan()
     })
 
     this._source = this._msgs
@@ -56,7 +58,9 @@ class Channel extends EE {
         this._endedLocal = end || false
 
         // source ended, close the stream
-        if (end === true) { return this.endChan() }
+        if (end === true) {
+          return this.endChan()
+        }
 
         // source errored, reset stream
         if (end || this._reset) {
@@ -104,9 +108,11 @@ class Channel extends EE {
   // close for reading
   close (err) {
     this._log('close', err)
-    this._endedRemote = err || true
-    this._msgs.end(this._endedRemote)
-    this.emit('close', err)
+    if (!this._endedRemote) {
+      this._endedRemote = err || true
+      this._msgs.end(this._endedRemote)
+      this.emit('close', err)
+    }
   }
 
   reset (err) {
