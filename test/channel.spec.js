@@ -232,13 +232,14 @@ describe('channel', () => {
     plex2.on('stream', (stream) => {
       pull(
         stream,
-        pull.onEnd((err) => {
+        pull.collect((err, data) => {
           expect(err).to.exist()
+          expect(data[0].toString()).to.eql('hello there!')
           done()
         })
       )
 
-      sndrSrc.push('hello there!') // should be able to write to closed chan
+      sndrSrc.push(Buffer.from('hello there!'))
       aborter.abort(new Error('nasty error!'))
     })
 
