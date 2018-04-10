@@ -1,6 +1,7 @@
 'use strict'
 
 const pushable = require('pull-pushable')
+const defaults = require('lodash.defaults')
 
 const consts = require('./consts')
 const EE = require('events')
@@ -11,13 +12,16 @@ const log = debug('pull-plex:chan')
 log.err = debug('pull-plex:chan:err')
 
 class Channel extends EE {
-  constructor (id, name, plex, initiator, open) {
+  constructor (opts) {
     super()
-    this._id = id
-    this._name = name
-    this._plex = plex
-    this._open = open
-    this._initiator = initiator
+
+    opts = defaults({}, opts, { initiator: false })
+
+    this._id = opts.id
+    this._name = opts.name
+    this._plex = opts.plex
+    this._open = opts.open
+    this._initiator = opts.initiator
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
     this._reset = false
@@ -41,9 +45,7 @@ class Channel extends EE {
       if (err && typeof err !== 'boolean') {
         setImmediate(() => this.emit('error', err))
       }
-      if (this._reset) { return } // don't try closing the channel on reset
-
-      // this.endChan()
+      // this.endChan() // TODO: do not uncoment this, it will end the channel too early
     })
 
     this._source = this._msgs
@@ -99,6 +101,10 @@ class Channel extends EE {
     return this._name
   }
 
+  get destroyed () {
+    return this._endedRemote && this._endedLocal
+  }
+
   push (data) {
     this._log('push', data)
     this._msgs.push(data)
@@ -124,6 +130,8 @@ class Channel extends EE {
   openChan () {
     this._log('openChan')
 
+    if (this.open) { return } // chan already open
+
     let name
     if (this._name && !Buffer.isBuffer(this._name)) {
       name = Buffer.from(this._name)
@@ -133,7 +141,7 @@ class Channel extends EE {
     this._plex.push([
       this._id,
       consts.type.NEW,
-      name != this._id.toString() ? name : null
+      name !== this._id.toString() ? name : null
     ])
   }
 

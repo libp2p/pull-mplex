@@ -2,6 +2,9 @@
 
 const pull = require('pull-stream')
 const pushable = require('pull-pushable')
+const through = require('pull-through')
+
+const defautls = require('lodash.defaults')
 
 const EE = require('events')
 
@@ -14,18 +17,31 @@ const debug = require('debug')
 const log = debug('pull-plex')
 log.err = debug('pull-plex:err')
 
+const MAX_MSG_SIZE = 1024 * 1024 // 1mb
+
 class Plex extends EE {
-  constructor (initiator, onChan) {
+  constructor (opts) {
     super()
 
-    if (typeof initiator === 'function') {
-      onChan = initiator
-      initiator = true
+    if (typeof opts === 'boolean') {
+      opts = { initiator: opts }
     }
 
-    this._initiator = !!initiator
+    opts = defautls({}, opts, {
+      initiator: true,
+      onChan: null,
+      maxChannels: 10000,
+      maxMsgSize: MAX_MSG_SIZE,
+      lazy: false
+    })
+
+    this._maxChannels = opts.maxChannels
+    this._maxMsgSize = opts.maxMsgSize
+    this._lazy = opts.lazy
+
+    this._initiator = !!opts.initiator
     this._chanId = this._initiator ? 1 : 0
-    this._channels = {}
+    this._channels = new Map()
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
 
@@ -45,8 +61,8 @@ class Plex extends EE {
       this.close(err)
     })
 
-    if (onChan) {
-      this.on('stream', (chan) => onChan(chan, chan.id))
+    if (opts.onChan) {
+      this.on('stream', (chan) => opts.onChan(chan, chan.id))
     }
 
     this.source = pull(
@@ -54,7 +70,15 @@ class Plex extends EE {
       coder.encode()
     )
 
+    const self = this
     this.sink = pull(
+      through(function (data) {
+        if (Buffer.byteLength(data) > self._maxMsgSize) {
+          setImmediate(() => self.emit('error', new Error('message too large!')))
+          return this.queue(null)
+        }
+        this.queue(data)
+      }),
       coder.decode(),
       (read) => {
         const next = (end, data) => {
@@ -86,12 +110,9 @@ class Plex extends EE {
     this._endedLocal = true
 
     // propagate close to channels
-    Object
-      .keys(this._channels)
-      .forEach((id) => {
-        const chan = this._channels[id]
-        if (chan) { return chan.close(err) }
-      })
+    for (let chan of this._channels.values()) {
+      chan.close(err)
+    }
 
     this.emit('close')
   }
@@ -101,13 +122,18 @@ class Plex extends EE {
   }
 
   reset (err) {
-    err = err || 'Underlying stream has been closed'
+    err = err || new Error('Underlying stream has been closed')
     this._chandata.end(err)
     this.close(err)
   }
 
   push (data) {
     this._log('push', data)
+    if (data.data
+      && Buffer.byteLength(data.data) > this._maxMsgSize) {
+      this._chandata.end(new Error('message too large!'))
+    }
+
     this._chandata.push(data)
     log('buffer', this._chandata.buffer)
   }
@@ -119,14 +145,20 @@ class Plex extends EE {
   }
 
   createStream (name) {
-    if (typeof name === 'number') {
-      name = name.toString()
-    }
-    return this._newStream(null, this._initiator, false, name)
+    if (typeof name === 'number') { name = name.toString() }
+    const chan = this._newStream(null, this._initiator, false, name)
+    if (!this._lazy) { chan.openChan() }
+    return chan
   }
 
   _newStream (id, initiator, open, name) {
     this._log('_newStream', Array.prototype.slice.call(arguments))
+
+    if (this._channels.size >= this._maxChannels) {
+      this.emit('error', new Error('max channels exceeded'))
+      return
+    }
+
     if (typeof initiator === 'string') {
       name = initiator
       initiator = false
@@ -139,28 +171,32 @@ class Plex extends EE {
     }
 
     id = typeof id === 'number' ? id : this._nextChanId(initiator)
-    const chan = new Channel(id,
+    const chan = new Channel({
+      id,
       name,
-      this,
+      plex: this,
       initiator,
-      open || false)
+      open: open || false
+    })
 
     chan.once('close', () => {
+      const chan = this._channels.get(id)
       this._log('deleting channel', JSON.stringify({
         channel: this._name,
         id: id,
-        endedLocal: this._channels[id]._endedLocal,
-        endedRemote: this._channels[id]._endedRemote,
-        initiator: this._channels[id]._initiator
+        endedLocal: chan._endedLocal,
+        endedRemote: chan._endedRemote,
+        initiator: chan._initiator
       }))
-      delete this._channels[id]
+      this._channels.delete(id)
     })
 
-    if (this._channels[id]) {
-      return this.emit('error', `channel with id ${id} already exist!`)
+    if (this._channels.has(id)) {
+      this.emit('error', new Error(`channel with id ${id} already exist!`))
+      return
     }
 
-    this._channels[id] = chan
+    this._channels.set(id, chan)
     return chan
   }
 
@@ -176,7 +212,7 @@ class Plex extends EE {
 
       case consts.type.OUT_MESSAGE:
       case consts.type.IN_MESSAGE: {
-        const chan = this._channels[id]
+        const chan = this._channels.get(id)
         if (chan) {
           chan.push(data)
         }
@@ -185,7 +221,7 @@ class Plex extends EE {
 
       case consts.type.OUT_CLOSE:
       case consts.type.IN_CLOSE: {
-        const chan = this._channels[id]
+        const chan = this._channels.get(id)
         if (chan) {
           chan.close()
         }
@@ -194,12 +230,15 @@ class Plex extends EE {
 
       case consts.type.OUT_RESET:
       case consts.type.IN_RESET: {
-        const chan = this._channels[id]
+        const chan = this._channels.get(id)
         if (chan) {
           chan.reset()
         }
         return
       }
+
+      default:
+        this.emit('error', new Error('Invalid message type'))
     }
   }
 }
