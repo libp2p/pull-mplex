@@ -10,7 +10,6 @@ const concat = require('concat-stream')
 const through = require('through2')
 const net = require('net')
 const chunky = require('chunky')
-const pump = require('pump')
 const toStream = require('pull-stream-to-stream')
 
 const MplexCore = require('libp2p-mplex/src/internals')
@@ -23,11 +22,9 @@ describe('node stream multiplex interop', () => {
     const stream1 = toStream(pullPlex.createStream())
     const stream2 = toStream(pullPlex.createStream())
 
-    function onStream (stream, id) {
+    const plex2 = new MplexCore({ initiator: false }, (stream) => {
       stream.pipe(collect())
-    }
-
-    const plex2 = new MplexCore({ initiator: false }, onStream)
+    })
 
     plex1.pipe(plex2)
 
@@ -58,12 +55,12 @@ describe('node stream multiplex interop', () => {
     const stream1 = plex1.createStream()
     const stream2 = plex1.createStream()
 
-    function onStream (pullStream, id) {
-      const stream = toStream(pullStream)
-      stream.pipe(collect())
-    }
-
-    const pullPlex = new Plex(onStream)
+    const pullPlex = new Plex({
+      onChan: (pullStream) => {
+        const stream = toStream(pullStream)
+        stream.pipe(collect())
+      }
+    })
     const plex2 = toStream(pullPlex)
 
     plex1.pipe(plex2)
@@ -94,7 +91,7 @@ describe('node stream multiplex interop', () => {
     const pullPlex = new Plex(true)
     const plex1 = toStream(pullPlex)
 
-    const plex2 = new MplexCore(function onStream (stream, id) {
+    const plex2 = new MplexCore((stream) => {
       const uppercaser = through(function (chunk, e, callback) {
         this.push(Buffer.from(chunk.toString().toUpperCase()))
         this.end()
@@ -133,14 +130,17 @@ describe('node stream multiplex interop', () => {
   it('old2new: two way piping works with 2 sub-streams', (done) => {
     const plex1 = new MplexCore()
 
-    const plex2 = toStream(new Plex(false, function onStream (pstream, id) {
-      const stream = toStream(pstream)
-      const uppercaser = through(function (chunk, e, callback) {
-        this.push(Buffer.from(chunk.toString().toUpperCase()))
-        this.end()
-        callback()
-      })
-      stream.pipe(uppercaser).pipe(stream)
+    const plex2 = toStream(new Plex({
+      initiator: false,
+      onChan: (pstream) => {
+        const stream = toStream(pstream)
+        const uppercaser = through(function (chunk, e, callback) {
+          this.push(Buffer.from(chunk.toString().toUpperCase()))
+          this.end()
+          callback()
+        })
+        stream.pipe(uppercaser).pipe(stream)
+      }
     }))
 
     plex1.pipe(plex2).pipe(plex1)
@@ -168,26 +168,6 @@ describe('node stream multiplex interop', () => {
         }
       })
     }
-  })
-
-  it.skip('destroy', (done) => {
-    const pullPlex = new Plex()
-    const plex1 = toStream(pullPlex)
-
-    const stream1 = toStream(pullPlex.createStream())
-
-    const plex2 = new MplexCore(function onStream (stream, id) {
-      stream.on('error', function (err) {
-        expect(err.message).to.equal('0 had an error')
-        done()
-      })
-    })
-
-    plex1.pipe(plex2)
-
-    stream1.write(Buffer.from('hello'))
-    // pull-stream-to-stream destroy doesn't take parameters, so error never gets emited
-    stream1.destroy(new Error('0 had an error'))
   })
 
   // need to implement message size checks
@@ -281,7 +261,7 @@ describe('node stream multiplex interop', () => {
       const stream1 = toStream(pullPlex.createStream())
       const stream2 = toStream(pullPlex.createStream())
 
-      const plex2 = new MplexCore(function onStream (stream, id) {
+      const plex2 = new MplexCore((stream) => {
         stream.pipe(collect())
       })
 
@@ -330,9 +310,12 @@ describe('node stream multiplex interop', () => {
       const stream1 = plex1.createStream()
       const stream2 = plex1.createStream()
 
-      const pullStream = new Plex(false, function onStream (pullStream, id) {
-        const stream = toStream(pullStream)
-        stream.pipe(collect())
+      const pullStream = new Plex({
+        initiator: false,
+        onChan: (pullStream) => {
+          const stream = toStream(pullStream)
+          stream.pipe(collect())
+        }
       })
       const plex2 = toStream(pullStream)
 
@@ -366,6 +349,7 @@ describe('node stream multiplex interop', () => {
     }
   })
 
+  // not sure how to do this with pull streams (prob not required?)
   it.skip('prefinish + corking', (done) => {
     const pullPlex = new Plex(true)
     const plex = toStream(pullPlex)
@@ -552,7 +536,7 @@ describe('node stream multiplex interop', () => {
   it('old2new: half close a half closed muxed stream', (done) => {
     const plex1 = new MplexCore({ halfOpen: true })
 
-    const pullPlex2 = new Plex()
+    const pullPlex2 = new Plex(false)
     const plex2 = toStream(pullPlex2)
 
     plex1.nameTag = 'plex1:'
@@ -560,22 +544,22 @@ describe('node stream multiplex interop', () => {
 
     plex1.pipe(plex2).pipe(plex1)
 
-    pullPlex2.on('stream', function (chan, id) {
+    pullPlex2.on('stream', (chan, id) => {
       const stream = toStream(chan)
 
       expect(stream).to.exist()
       expect(id).to.exist()
 
-      stream.on('data', function (data) {
+      stream.on('data', (data) => {
         expect(data).to.eql(Buffer.from('some data'))
       })
 
-      stream.on('end', function () {
+      stream.on('end', () => {
         stream.write(Buffer.from('hello world'))
         stream.end()
       })
 
-      stream.on('error', function (err) {
+      stream.on('error', (err) => {
         expect(err).to.not.exist()
         console.dir(err)
       })
@@ -583,15 +567,14 @@ describe('node stream multiplex interop', () => {
 
     const stream = plex1.createStream()
 
-    stream.on('data', function (data) {
+    stream.on('data', (data) => {
       expect(data).to.eql(Buffer.from('hello world'))
     })
 
     // we can't make pull stream halfOpen with pull-stream-to-pull-stream
     // so it will error out with a writting after EOF error, so just ignore
-    stream.on('error', function (err) {
-      // expect(err).to.not.exist()
-      // console.dir(err)
+    stream.on('error', (err) => {
+      expect(err).to.not.exist()
     })
 
     stream.on('end', function () {
@@ -601,58 +584,5 @@ describe('node stream multiplex interop', () => {
     stream.write(Buffer.from('some data'))
 
     stream.end()
-  })
-
-  it.skip('underlying error is propagated to muxed streams', (done) => {
-    let count = 0
-
-    function check () {
-      if (++count === 4) {
-        done()
-      }
-    }
-
-    const plex1 = new MplexCore()
-    const plex2 = new MplexCore()
-
-    let socket
-
-    plex2.on('stream', function (stream) {
-      stream.on('error', function (err) {
-        expect(err).to.exist()
-        check()
-      })
-
-      stream.on('close', function () {
-        check()
-      })
-
-      socket.destroy()
-    })
-
-    const stream1to2 = plex1.createStream(1337)
-
-    stream1to2.on('error', function (err) {
-      expect(err).to.exist()
-      check()
-    })
-
-    stream1to2.on('close', function () {
-      check()
-    })
-
-    const server = net.createServer(function (stream) {
-      pump(plex2, stream)
-      pump(stream, plex2)
-      server.close()
-    })
-
-    server.listen(0, function () {
-      const port = server.address().port
-      socket = net.connect(port)
-
-      pump(plex1, socket)
-      pump(socket, plex1)
-    })
   })
 })
