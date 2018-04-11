@@ -40,7 +40,7 @@ class Plex extends EE {
     this._lazy = opts.lazy
 
     this._initiator = !!opts.initiator
-    this._chanId = this._initiator ? 1 : 0
+    this._chanId = this._initiator ? 0 : 1
     this._channels = new Map()
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
@@ -171,6 +171,10 @@ class Plex extends EE {
     }
 
     id = typeof id === 'number' ? id : this._nextChanId(initiator)
+    if (this._channels.has(id)) {
+      this.emit('error', new Error(`channel with id ${id} already exist!`))
+      return
+    }
     const chan = new Channel({
       id,
       name,
@@ -191,11 +195,6 @@ class Plex extends EE {
       this._channels.delete(id)
     })
 
-    if (this._channels.has(id)) {
-      this.emit('error', new Error(`channel with id ${id} already exist!`))
-      return
-    }
-
     this._channels.set(id, chan)
     return chan
   }
@@ -205,7 +204,12 @@ class Plex extends EE {
     const { id, type, data } = msg
     switch (type) {
       case consts.type.NEW: {
-        const chan = this._newStream(id, this._initiator, true, data.toString())
+        // if (this._initiator && (id & 1) === 1) {
+        //   this.emit('error', new Error('two initiators detected'))
+        //   return
+        // }
+
+        const chan = this._newStream(id, false, true, data.toString())
         setImmediate(() => this.emit('stream', chan, id))
         return
       }
