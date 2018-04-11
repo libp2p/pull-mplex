@@ -153,7 +153,7 @@ describe('plex', () => {
     )
   })
 
-  describe(`check id`, () => [true, false].forEach((initiator) => {
+  describe.skip(`check id`, () => [true, false].forEach((initiator) => {
     it(`id should be ${initiator ? 'odd' : 'even'}`, () => {
       const plex = new Plex(initiator)
 
