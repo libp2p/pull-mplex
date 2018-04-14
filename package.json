@@ -35,10 +35,13 @@
     "url": "git+https://github.com/dryajov/pull-plex.git"
   },
   "dependencies": {
+    "bl": "^1.2.2",
+    "buffer-reuse-pool": "^1.0.0",
     "chai": "^4.1.2",
     "debug": "^3.1.0",
     "dirty-chai": "^2.0.1",
     "interface-connection": "^0.3.2",
+    "lodash.defaults": "^4.2.0",
     "pull-batch": "^1.0.0",
     "pull-cat": "^1.1.11",
     "pull-defer": "^0.2.2",
