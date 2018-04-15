@@ -1,5 +1,5 @@
 {
-  "name": "pull-plex",
+  "name": "pull-mplex",
   "version": "0.0.1",
   "description": "multiplex implementation of https://github.com/libp2p/mplex",
   "main": "src/index.js",
