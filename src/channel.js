@@ -108,7 +108,6 @@ class Channel extends EE {
   push (data) {
     this._log('push', data)
     this._msgs.push(data)
-    log('buffer', this._msgs.buffer)
   }
 
   // close for reading

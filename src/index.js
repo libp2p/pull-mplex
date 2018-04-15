@@ -19,7 +19,7 @@ log.err = debug('pull-plex:err')
 
 const MAX_MSG_SIZE = 1024 * 1024 // 1mb
 
-class Plex extends EE {
+class Mplex extends EE {
   constructor (opts) {
     super()
 
@@ -247,4 +247,4 @@ class Plex extends EE {
   }
 }
 
-module.exports = Plex
+module.exports = Mplex
