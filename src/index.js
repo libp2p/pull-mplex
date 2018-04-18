@@ -39,7 +39,7 @@ class Mplex extends EE {
     this._maxMsgSize = opts.maxMsgSize
     this._lazy = opts.lazy
 
-    this._initiator = !!opts.initiator
+    this._initiator = Boolean(opts.initiator)
     this._chanId = this._initiator ? 0 : 1
     this._inChannels = new Map()
     this._outChannels = new Map()
@@ -111,8 +111,7 @@ class Mplex extends EE {
     this._endedLocal = true
 
     // propagate close to channels
-    const chans = new Map(this._outChannels,
-      this._inChannels)
+    const chans = new Map(this._outChannels, this._inChannels)
     for (let chan of chans.values()) {
       chan.close(err)
     }
@@ -132,8 +131,8 @@ class Mplex extends EE {
 
   push (data) {
     this._log('push', data)
-    if (data.data
-      && Buffer.byteLength(data.data) > this._maxMsgSize) {
+    if (data.data &&
+      Buffer.byteLength(data.data) > this._maxMsgSize) {
       this._chandata.end(new Error('message too large!'))
     }
 

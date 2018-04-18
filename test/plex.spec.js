@@ -15,6 +15,8 @@ const abortable = require('pull-abortable')
 const coder = require('../src/coder')
 const Plex = require('../src')
 
+const noop = () => {}
+
 describe('plex', () => {
   it(`reset should close both ends`, (done) => {
     const p = pair()
@@ -47,17 +49,17 @@ describe('plex', () => {
     const aborter = abortable()
     const plex1 = new Plex()
 
-    plex1.on('error', (() => {}))
+    plex1.on('error', noop)
 
     pull(plex1, aborter)
 
     expect(2).check(done)
 
     const stream1 = plex1.createStream()
-    stream1.on('error', (() => {}))
+    stream1.on('error', noop)
 
     const stream2 = plex1.createStream()
-    stream2.on('error', (() => {}))
+    stream2.on('error', noop)
     pull(
       stream1,
       pull.onEnd((err) => {
@@ -79,17 +81,17 @@ describe('plex', () => {
     const aborter = abortable()
     const plex1 = new Plex()
 
-    plex1.on('error', (() => {}))
+    plex1.on('error', noop)
 
     pull(plex1, aborter)
 
     expect(2).check(done)
 
     const stream1 = plex1.createStream()
-    stream1.on('error', (() => {}))
+    stream1.on('error', noop)
 
     const stream2 = plex1.createStream()
-    stream2.on('error', (() => {}))
+    stream2.on('error', noop)
 
     pull(
       stream1,

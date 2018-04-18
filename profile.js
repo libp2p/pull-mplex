@@ -79,7 +79,6 @@ function marker (n, done) {
   }
 }
 
-
 spawn(1000, 10000, (err) => {
   if (err) {
     throw err
