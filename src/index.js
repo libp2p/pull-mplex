@@ -41,7 +41,8 @@ class Mplex extends EE {
 
     this._initiator = !!opts.initiator
     this._chanId = this._initiator ? 0 : 1
-    this._channels = new Map()
+    this._inChannels = new Map()
+    this._outChannels = new Map()
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
 
@@ -110,7 +111,9 @@ class Mplex extends EE {
     this._endedLocal = true
 
     // propagate close to channels
-    for (let chan of this._channels.values()) {
+    const chans = new Map(this._outChannels,
+      this._inChannels)
+    for (let chan of chans.values()) {
       chan.close(err)
     }
 
@@ -146,15 +149,15 @@ class Mplex extends EE {
 
   createStream (name) {
     if (typeof name === 'number') { name = name.toString() }
-    const chan = this._newStream(null, this._initiator, false, name)
+    const chan = this._newStream(null, true, false, name, this._outChannels)
     if (!this._lazy) { chan.openChan() }
     return chan
   }
 
-  _newStream (id, initiator, open, name) {
+  _newStream (id, initiator, open, name, list) {
     this._log('_newStream', Array.prototype.slice.call(arguments))
 
-    if (this._channels.size >= this._maxChannels) {
+    if (this.chanSize >= this._maxChannels) {
       this.emit('error', new Error('max channels exceeded'))
       return
     }
@@ -171,7 +174,7 @@ class Mplex extends EE {
     }
 
     id = typeof id === 'number' ? id : this._nextChanId(initiator)
-    if (this._channels.has(id)) {
+    if (list.has(id)) {
       this.emit('error', new Error(`channel with id ${id} already exist!`))
       return
     }
@@ -183,8 +186,12 @@ class Mplex extends EE {
       open: open || false
     })
 
+    return this._addChan(id, chan, list)
+  }
+
+  _addChan (id, chan, list) {
     chan.once('close', () => {
-      const chan = this._channels.get(id)
+      const chan = list.get(id)
       this._log('deleting channel', JSON.stringify({
         channel: this._name,
         id: id,
@@ -192,11 +199,15 @@ class Mplex extends EE {
         endedRemote: chan._endedRemote,
         initiator: chan._initiator
       }))
-      this._channels.delete(id)
+      list.delete(id)
     })
 
-    this._channels.set(id, chan)
+    list.set(id, chan)
     return chan
+  }
+
+  get chanSize () {
+    return this._inChannels.size + this._outChannels.size
   }
 
   _handle (msg) {
@@ -204,19 +215,15 @@ class Mplex extends EE {
     const { id, type, data } = msg
     switch (type) {
       case consts.type.NEW: {
-        // if (this._initiator && (id & 1) === 1) {
-        //   this.emit('error', new Error('two initiators detected'))
-        //   return
-        // }
-
-        const chan = this._newStream(id, false, true, data.toString())
+        const chan = this._newStream(id, false, true, data.toString(), this._inChannels)
         setImmediate(() => this.emit('stream', chan, id))
         return
       }
 
       case consts.type.OUT_MESSAGE:
       case consts.type.IN_MESSAGE: {
-        const chan = this._channels.get(id)
+        const list = type & 1 ? this._outChannels : this._inChannels
+        const chan = list.get(id)
         if (chan) {
           chan.push(data)
         }
@@ -225,7 +232,8 @@ class Mplex extends EE {
 
       case consts.type.OUT_CLOSE:
       case consts.type.IN_CLOSE: {
-        const chan = this._channels.get(id)
+        const list = type & 1 ? this._outChannels : this._inChannels
+        const chan = list.get(id)
         if (chan) {
           chan.close()
         }
@@ -234,7 +242,8 @@ class Mplex extends EE {
 
       case consts.type.OUT_RESET:
       case consts.type.IN_RESET: {
-        const chan = this._channels.get(id)
+        const list = type & 1 ? this._outChannels : this._inChannels
+        const chan = list.get(id)
         if (chan) {
           chan.reset()
         }
