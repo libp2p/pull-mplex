@@ -3,10 +3,7 @@
 const pull = require('pull-stream')
 const varint = require('varint')
 const through = require('pull-through')
-const reuse = require('buffer-reuse-pool')
 const BufferList = require('bl')
-
-const pool = reuse.pool(1024 * 1024)
 
 const debug = require('debug')
 
@@ -35,7 +32,6 @@ let States = {
 
 exports.decode = () => {
   let state = States.PARSING
-  let offset = 0
   let message = null
   let length = 0
   let buffer = null
@@ -101,7 +97,6 @@ exports.decode = () => {
         if (length <= 0 && States.PARSING === state) {
           message.data = message.data.slice() // get new buffer
           this.queue(message)
-          offset = 0
           message = null
           length = 0
         }
