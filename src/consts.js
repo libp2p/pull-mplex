@@ -1,3 +1,5 @@
+'use strict'
+
 exports.type = {
   NEW: 0,
   IN_MESSAGE: 1,
