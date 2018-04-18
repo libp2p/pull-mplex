@@ -1,1 +1,1 @@
-require('./old-mplex-interop')
+require('./stream-mplex-interop')
