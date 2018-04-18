@@ -157,8 +157,8 @@ class Channel extends EE {
     this._plex.push([
       this._id,
       this._initiator
-        ? consts.type.IN_MESSAGE
-        : consts.type.OUT_MESSAGE,
+        ? consts.type.OUT_MESSAGE
+        : consts.type.IN_MESSAGE,
       data
     ])
   }
@@ -173,8 +173,8 @@ class Channel extends EE {
     this._plex.push([
       this._id,
       this._initiator
-        ? consts.type.IN_CLOSE
-        : consts.type.OUT_CLOSE,
+        ? consts.type.OUT_CLOSE
+        : consts.type.IN_CLOSE,
       Buffer.from([0])
     ])
   }
@@ -189,8 +189,8 @@ class Channel extends EE {
     this._plex.push([
       this._id,
       this._initiator
-        ? consts.type.IN_RESET
-        : consts.type.OUT_RESET
+        ? consts.type.OUT_RESET
+        : consts.type.IN_RESET
     ])
   }
 }
