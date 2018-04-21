@@ -10,19 +10,25 @@ const debug = require('debug')
 const log = debug('pull-plex:coder')
 log.err = debug('pull-plex:coder:err')
 
+let pool = Buffer.allocUnsafe(100 * 1024)
+let used = 0
+const empty = Buffer.alloc(0)
 exports.encode = () => {
-  return pull(
-    through(function (msg) {
-      const seq = [Buffer.from(varint.encode(msg[0] << 3 | msg[1]))]
-      const len = msg[2] ? Buffer.byteLength(msg[2]) : 0
-      seq.push(Buffer.from(varint.encode(len))) // send empty body
-      this.queue(Buffer.concat(seq)) // send header
+  return through(function (msg) {
+    const oldUsed = used
+    varint.encode(msg[0] << 3 | msg[1], pool, used)
+    used += varint.encode.bytes
+    varint.encode(varint.encode(msg[2] ? Buffer.byteLength(msg[2]) : 0), pool, used)
+    used += varint.encode.bytes
+    this.queue(pool.slice(oldUsed, used)) // send header
 
-      if (len) {
-        this.queue(msg[2])
-      }
-    })
-  )
+    if (pool.length - used < 100) {
+      pool = Buffer.allocUnsafe(10 * 1024)
+      used = 0
+    }
+
+    this.queue(msg[2] || empty)
+  })
 }
 
 let States = {
@@ -40,10 +46,9 @@ exports.decode = () => {
     try {
       let offset = 0
       let length = 0
-      let buff = msg.slice()
-      const h = varint.decode(buff) // no bl[x] accessor :(
+      const h = varint.decode(msg)
       offset += varint.decode.bytes
-      length = varint.decode(buff, offset)
+      length = varint.decode(msg, offset)
       offset += varint.decode.bytes
       const message = {
         id: h >> 3,
@@ -68,21 +73,19 @@ exports.decode = () => {
     let left = length - msg.length
     if (left < 0) { left = 0 }
     if (msg.length > 0) {
-      const buff = msg.slice(0, length - left)
-      data.append(buff)
-      msg = msg.slice(buff.length)
+      data.append(msg.slice(0, length - left))
     }
     if (left <= 0) { state = States.PARSING }
-    return [left, msg, data]
+    return [left, msg.slice(length - left), data]
   }
 
   return through(function (msg) {
-    while (msg.length) {
+    while (msg && msg.length) {
       if (States.PARSING === state) {
         if (!buffer) {
-          buffer = new BufferList(msg)
+          buffer = Buffer.from(msg)
         } else {
-          buffer = buffer.append(msg)
+          buffer = Buffer.concat([buffer, msg])
         }
 
         [msg, message, length] = decode(buffer)

@@ -26,6 +26,18 @@ class Channel extends EE {
     this._endedLocal = false // local stream ended
     this._reset = false
 
+    this.MSG = this._initiator
+      ? consts.type.OUT_MESSAGE
+      : consts.type.IN_MESSAGE
+
+    this.END = this._initiator
+      ? consts.type.OUT_CLOSE
+      : consts.type.IN_CLOSE
+
+    this.RESET = this._initiator
+      ? consts.type.OUT_RESET
+      : consts.type.IN_RESET
+
     this._log = (name, data) => {
       log({
         op: name,
@@ -132,10 +144,6 @@ class Channel extends EE {
     if (this.open) { return } // chan already open
 
     let name
-    if (this._name && !Buffer.isBuffer(this._name)) {
-      name = Buffer.from(this._name)
-    }
-
     this.open = true
     this._plex.push([
       this._id,
@@ -151,14 +159,9 @@ class Channel extends EE {
       this.openChan()
     }
 
-    if (!Buffer.isBuffer(data)) {
-      data = Buffer.from(data)
-    }
     this._plex.push([
       this._id,
-      this._initiator
-        ? consts.type.OUT_MESSAGE
-        : consts.type.IN_MESSAGE,
+      this.MSG,
       data
     ])
   }
@@ -172,10 +175,7 @@ class Channel extends EE {
 
     this._plex.push([
       this._id,
-      this._initiator
-        ? consts.type.OUT_CLOSE
-        : consts.type.IN_CLOSE,
-      Buffer.from([0])
+      this.END
     ])
   }
 
@@ -188,9 +188,7 @@ class Channel extends EE {
 
     this._plex.push([
       this._id,
-      this._initiator
-        ? consts.type.OUT_RESET
-        : consts.type.IN_RESET
+      this.RESET
     ])
   }
 }
