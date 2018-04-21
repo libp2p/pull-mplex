@@ -154,8 +154,6 @@ class Mplex extends EE {
   }
 
   _newStream (id, initiator, open, name, list) {
-    this._log('_newStream', Array.prototype.slice.call(arguments))
-
     if (this.chanSize >= this._maxChannels) {
       this.emit('error', new Error('max channels exceeded'))
       return
@@ -191,13 +189,13 @@ class Mplex extends EE {
   _addChan (id, chan, list) {
     chan.once('close', () => {
       const chan = list.get(id)
-      this._log('deleting channel', JSON.stringify({
-        channel: this._name,
-        id: id,
-        endedLocal: chan._endedLocal,
-        endedRemote: chan._endedRemote,
-        initiator: chan._initiator
-      }))
+      // this._log('deleting channel', JSON.stringify({
+      //   channel: this._name,
+      //   id: id,
+      //   endedLocal: chan._endedLocal,
+      //   endedRemote: chan._endedRemote,
+      //   initiator: chan._initiator
+      // }))
       list.delete(id)
     })
 
