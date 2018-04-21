@@ -79,7 +79,7 @@ function marker (n, done) {
   }
 }
 
-spawn(1000, 10000, (err) => {
+spawn(1000, 1000, (err) => {
   if (err) {
     throw err
   }
