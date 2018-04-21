@@ -33,7 +33,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dryajov/pull-plex.git"
+    "url": "git+https://github.com/libp2p/pull-mplex.git"
   },
   "dependencies": {
     "bl": "^1.2.2",
