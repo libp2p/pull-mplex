@@ -36,7 +36,6 @@
     "url": "git+https://github.com/libp2p/pull-mplex.git"
   },
   "dependencies": {
-    "bl": "^1.2.2",
     "buffer-reuse-pool": "^1.0.0",
     "chai": "^4.1.2",
     "debug": "^3.1.0",
