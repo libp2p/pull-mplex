@@ -46,15 +46,15 @@ class Mplex extends EE {
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
 
-    this._log = (name, data) => {
-      log({
-        op: name,
-        initiator: this._initiator,
-        endedLocal: this._endedLocal,
-        endedRemote: this._endedRemote,
-        data: (data && data.toString()) || ''
-      })
-    }
+    // this._log = (name, data) => {
+    //   log({
+    //     op: name,
+    //     initiator: this._initiator,
+    //     endedLocal: this._endedLocal,
+    //     endedRemote: this._endedRemote,
+    //     data: (data && data.toString()) || ''
+    //   })
+    // }
 
     this._chandata = pushable((err) => {
       // this._log('chandata ended')
@@ -188,14 +188,6 @@ class Mplex extends EE {
 
   _addChan (id, chan, list) {
     chan.once('close', () => {
-      const chan = list.get(id)
-      // this._log('deleting channel', JSON.stringify({
-      //   channel: this._name,
-      //   id: id,
-      //   endedLocal: chan._endedLocal,
-      //   endedRemote: chan._endedRemote,
-      //   initiator: chan._initiator
-      // }))
       list.delete(id)
     })
 
