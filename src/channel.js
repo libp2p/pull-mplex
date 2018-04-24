@@ -57,7 +57,7 @@ class Channel extends EE {
       if (err && typeof err !== 'boolean') {
         setImmediate(() => this.emit('error', err))
       }
-      // this.endChan() // TODO: do not uncoment this, it will end the channel too early
+      // this.endChan() // TODO: do not uncomment this, it will end the channel too early
     })
 
     this._source = this._msgs

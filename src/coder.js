@@ -89,8 +89,7 @@ exports.decode = () => {
     return [left, msg.slice(length - left), data]
   }
 
-  return through(function (msg_) {
-    let msg = msg_
+  return through(function (msg) {
     while (msg && msg.length) {
       if (States.PARSING === state) {
         if (!buffer) {
