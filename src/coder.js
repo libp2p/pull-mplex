@@ -1,29 +1,29 @@
 'use strict'
 
-const pull = require('pull-stream')
 const varint = require('varint')
 const through = require('pull-through')
-const BufferList = require('bl')
 
 const debug = require('debug')
 
 const log = debug('pull-plex:coder')
 log.err = debug('pull-plex:coder:err')
 
-let pool = Buffer.allocUnsafe(100 * 1024)
-let used = 0
+const PULL_LENGTH = 10 * 1024
 const empty = Buffer.alloc(0)
 exports.encode = () => {
+  let pool = Buffer.alloc(PULL_LENGTH)
+  let used = 0
+
   return through(function (msg) {
     const oldUsed = used
     varint.encode(msg[0] << 3 | msg[1], pool, used)
     used += varint.encode.bytes
-    varint.encode(varint.encode(msg[2] ? Buffer.byteLength(msg[2]) : 0), pool, used)
+    varint.encode(varint.encode(msg[2] ? msg[2].length : 0), pool, used)
     used += varint.encode.bytes
     this.queue(pool.slice(oldUsed, used)) // send header
 
-    if (pool.length - used < 100) {
-      pool = Buffer.allocUnsafe(10 * 1024)
+    if (PULL_LENGTH - used < 100) {
+      pool = Buffer.alloc(PULL_LENGTH)
       used = 0
     }
 
@@ -31,7 +31,7 @@ exports.encode = () => {
   })
 }
 
-let States = {
+const States = {
   PARSING: 0,
   READING: 1
 }
@@ -42,14 +42,24 @@ exports.decode = () => {
   let length = 0
   let buffer = null
 
-  const decode = (msg) => {
+  const tryDecode = (msg) => {
+    let offset = 0
+    let length = 0
     try {
-      let offset = 0
-      let length = 0
-      const h = varint.decode(msg)
+      let h = varint.decode(msg)
       offset += varint.decode.bytes
       length = varint.decode(msg, offset)
       offset += varint.decode.bytes
+      return [h, offset, length]
+    } catch (err) {
+      log.err(err) // ignore if data is empty
+    }
+    return []
+  }
+
+  const decode = (msg) => {
+    const [h, offset, length] = tryDecode(msg)
+    if (h !== void 0) {
       const message = {
         id: h >> 3,
         type: h & 7,
@@ -58,10 +68,9 @@ exports.decode = () => {
 
       state = States.READING
       return [msg.slice(offset), message, length]
-    } catch (err) {
-      log.err(err) // ignore if data is empty
-      return [msg, undefined, undefined]
     }
+
+    return [msg]
   }
 
   const read = (msg, data, length) => {
@@ -80,7 +89,8 @@ exports.decode = () => {
     return [left, msg.slice(length - left), data]
   }
 
-  return through(function (msg) {
+  return through(function (msg_) {
+    let msg = msg_
     while (msg && msg.length) {
       if (States.PARSING === state) {
         if (!buffer) {
