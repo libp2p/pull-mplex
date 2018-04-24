@@ -53,7 +53,7 @@ exports.decode = () => {
       const message = {
         id: h >> 3,
         type: h & 7,
-        data: new BufferList() // instead of allocating a new buff use a mem pool here
+        data: [] // instead of allocating a new buff use a mem pool here
       }
 
       state = States.READING
@@ -73,7 +73,8 @@ exports.decode = () => {
     let left = length - msg.length
     if (left < 0) { left = 0 }
     if (msg.length > 0) {
-      data.append(msg.slice(0, length - left))
+      const buff = msg.slice(0, length - left)
+      data.push(Buffer.isBuffer(buff) ? buff : Buffer.from(buff))
     }
     if (left <= 0) { state = States.PARSING }
     return [left, msg.slice(length - left), data]
@@ -98,7 +99,7 @@ exports.decode = () => {
       if (States.READING === state) {
         [length, msg, message.data] = read(msg, message.data, length)
         if (length <= 0 && States.PARSING === state) {
-          message.data = message.data.slice() // get new buffer
+          message.data = Buffer.concat(message.data) // get new buffer
           this.queue(message)
           message = null
           length = 0
