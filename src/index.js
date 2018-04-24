@@ -57,7 +57,7 @@ class Mplex extends EE {
     }
 
     this._chandata = pushable((err) => {
-      this._log('chandata ended')
+      // this._log('chandata ended')
       this._endedRemote = true
       this.close(err)
     })
@@ -74,7 +74,7 @@ class Mplex extends EE {
     const self = this
     this.sink = pull(
       through(function (data) {
-        if (Buffer.byteLength(data) > self._maxMsgSize) {
+        if (data && data.length >= self._maxMsgSize) {
           setImmediate(() => self.emit('error', new Error('message too large!')))
           return this.queue(null)
         }
@@ -82,15 +82,15 @@ class Mplex extends EE {
       }),
       coder.decode(),
       (read) => {
-        const next = (end, data) => {
-          if (this._endedLocal) { return }
-          if (end === true) { return this.close() }
-          if (end) { return this.reset(end) }
-          this._handle(data)
+        function next (end, data) {
+          if (self._endedLocal) { return }
+          if (end === true) { return self.close() }
+          if (end) { return self.reset(end) }
+          self._handle(data)
           return read(null, next)
         }
 
-        read(null, next)
+        return read(null, next)
       })
   }
 
@@ -99,7 +99,7 @@ class Mplex extends EE {
   }
 
   close (err) {
-    this._log('close', err)
+    // this._log('close', err)
 
     if (this.destroyed) { return }
 
@@ -130,7 +130,7 @@ class Mplex extends EE {
   }
 
   push (data) {
-    this._log('push', data)
+    // this._log('push', data)
     if (data.data &&
       Buffer.byteLength(data.data) > this._maxMsgSize) {
       this._chandata.end(new Error('message too large!'))
@@ -208,13 +208,13 @@ class Mplex extends EE {
   }
 
   _handle (msg) {
-    this._log('_handle', msg)
+    // this._log('_handle', msg)
     const { id, type, data } = msg
     switch (type) {
       case consts.type.NEW: {
         const chan = this._newStream(id, false, true, data.toString(), this._inChannels)
         setImmediate(() => this.emit('stream', chan, id))
-        return
+        break
       }
 
       case consts.type.OUT_MESSAGE:
@@ -224,7 +224,7 @@ class Mplex extends EE {
         if (chan) {
           chan.push(data)
         }
-        return
+        break
       }
 
       case consts.type.OUT_CLOSE:
@@ -234,7 +234,7 @@ class Mplex extends EE {
         if (chan) {
           chan.close()
         }
-        return
+        break
       }
 
       case consts.type.OUT_RESET:
@@ -244,7 +244,7 @@ class Mplex extends EE {
         if (chan) {
           chan.reset()
         }
-        return
+        break
       }
 
       default:

@@ -135,7 +135,7 @@ describe('plex', () => {
     })
 
     pull(
-      pull.values([Array(1048576 + 1).join('\xff')]), // 1mb
+      pull.values([Array(1048576 + 2).join('\xff')]), // 1mb
       plex
     )
   })
