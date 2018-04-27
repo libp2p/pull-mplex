@@ -110,7 +110,7 @@ describe('plex', () => {
     aborter.abort(new Error('nasty error'))
   })
 
-  it(`should fail if max number of channels exceeded`, (done) => {
+  it.skip(`should fail if max number of channels exceeded`, (done) => {
     const plex1 = new Plex({
       maxChannels: 10,
       lazy: true
