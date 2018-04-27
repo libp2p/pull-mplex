@@ -38,17 +38,17 @@ class Channel extends EE {
       ? consts.type.OUT_RESET
       : consts.type.IN_RESET
 
-    // this._log = (name, data) => {
-    //   log({
-    //     op: name,
-    //     name: this._name,
-    //     id: this._id,
-    //     endedLocal: this._endedLocal,
-    //     endedRemote: this._endedRemote,
-    //     initiator: this._initiator,
-    //     data: (data && data.toString()) || ''
-    //   })
-    // }
+    this._log = (name, data) => {
+      log({
+        op: name,
+        name: this._name,
+        id: this._id,
+        endedLocal: this._endedLocal,
+        endedRemote: this._endedRemote,
+        initiator: this._initiator,
+        data: (data && data.toString()) || ''
+      })
+    }
 
     // this._log('new channel', this._name)
 
@@ -73,7 +73,7 @@ class Channel extends EE {
 
         // source ended, close the stream
         if (end === true) {
-          return this.endChan(null)
+          return this.endChan()
         }
 
         // source errored, reset stream
@@ -129,6 +129,7 @@ class Channel extends EE {
       this._endedRemote = err || true
       this._msgs.end(this._endedRemote)
       this.emit('close', err)
+      this.plex = null
     }
   }
 
