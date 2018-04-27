@@ -10,10 +10,10 @@ log.err = debug('pull-plex:coder:err')
 
 const PULL_LENGTH = 10 * 1024
 const empty = Buffer.alloc(0)
-exports.encode = () => {
-  let pool = Buffer.alloc(PULL_LENGTH)
-  let used = 0
+let pool = Buffer.alloc(PULL_LENGTH)
+let used = 0
 
+exports.encode = () => {
   return through(function (msg) {
     const oldUsed = used
     varint.encode(msg[0] << 3 | msg[1], pool, used)
@@ -38,9 +38,6 @@ const States = {
 
 exports.decode = () => {
   let state = States.PARSING
-  let message = null
-  let length = 0
-  let buffer = null
 
   const tryDecode = (msg) => {
     let offset = 0
@@ -63,7 +60,7 @@ exports.decode = () => {
       const message = {
         id: h >> 3,
         type: h & 7,
-        data: [] // instead of allocating a new buff use a mem pool here
+        data: []
       }
 
       state = States.READING
@@ -81,34 +78,54 @@ exports.decode = () => {
 
     let left = length - msg.length
     if (left < 0) { left = 0 }
+    const size = length - left
     if (msg.length > 0) {
-      const buff = msg.slice(0, length - left)
-      data.push(Buffer.isBuffer(buff) ? buff : Buffer.from(buff))
+      const buff = Buffer.isBuffer(msg) ? msg : Buffer.from(msg)
+      data.push(buff.slice(0, size))
     }
     if (left <= 0) { state = States.PARSING }
-    return [left, msg.slice(length - left), data]
+    return [left, msg.slice(size), data]
   }
 
+  let length = 0
+  let offset = 0
+  let used = 0
+  let marker = 0
+  let message = null
+  let accumulating = false
+  let buffer = Buffer.alloc(1 << 20)
   return through(function (msg) {
     while (msg && msg.length) {
       if (States.PARSING === state) {
-        if (!buffer) {
-          buffer = Buffer.from(msg)
-        } else {
-          buffer = Buffer.concat([buffer, msg])
+        if (accumulating) {
+          used += msg.copy(buffer, used)
+          msg = buffer.slice(marker, used)
         }
 
-        [msg, message, length] = decode(buffer)
-        if (!message && !length) {
-          return // read more
+        [msg, message, length] = decode(msg)
+        if (!message) {
+          if (!accumulating) {
+            marker = used
+            used += msg.copy(buffer, used)
+          }
+          accumulating = true
+          return
         }
-        buffer = null
+
+        used = 0
+        marker = 0
+        offset = 0
+        accumulating = false
       }
 
       if (States.READING === state) {
         [length, msg, message.data] = read(msg, message.data, length)
         if (length <= 0 && States.PARSING === state) {
-          message.data = Buffer.concat(message.data) // get new buffer
+          message.data = message.data.length
+            ? message.data.length === 1
+              ? message.data[0]
+              : Buffer.concat(message.data)
+            : empty // get new buffer
           this.queue(message)
           message = null
           length = 0

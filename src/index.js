@@ -17,7 +17,7 @@ const debug = require('debug')
 const log = debug('pull-plex')
 log.err = debug('pull-plex:err')
 
-const MAX_MSG_SIZE = 1024 * 1024 // 1mb
+const MAX_MSG_SIZE = 1 << 20 // 1mb
 
 class Mplex extends EE {
   constructor (opts) {
@@ -41,20 +41,20 @@ class Mplex extends EE {
 
     this._initiator = Boolean(opts.initiator)
     this._chanId = this._initiator ? 0 : 1
-    this._inChannels = new Map()
-    this._outChannels = new Map()
+    this._inChannels = new Array(this._maxChannels / 2)
+    this._outChannels = new Array(this._maxChannels / 2)
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
 
-    // this._log = (name, data) => {
-    //   log({
-    //     op: name,
-    //     initiator: this._initiator,
-    //     endedLocal: this._endedLocal,
-    //     endedRemote: this._endedRemote,
-    //     data: (data && data.toString()) || ''
-    //   })
-    // }
+    this._log = (name, data) => {
+      log({
+        op: name,
+        initiator: this._initiator,
+        endedLocal: this._endedLocal,
+        endedRemote: this._endedRemote,
+        data: (data && data.toString()) || ''
+      })
+    }
 
     this._chandata = pushable((err) => {
       // this._log('chandata ended')
@@ -111,9 +111,11 @@ class Mplex extends EE {
     this._endedLocal = true
 
     // propagate close to channels
-    const chans = new Map(this._outChannels, this._inChannels)
-    for (let chan of chans.values()) {
-      chan.close(err)
+    const chans = Array.prototype.concat(this._outChannels, this._inChannels)
+    for (let chan of chans) {
+      if (chan) {
+        chan.close(err)
+      }
     }
 
     this.emit('close')
@@ -171,7 +173,8 @@ class Mplex extends EE {
     }
 
     id = typeof id === 'number' ? id : this._nextChanId(initiator)
-    if (list.has(id)) {
+    // if (list.has(id)) {
+    if (list[id]) {
       this.emit('error', new Error(`channel with id ${id} already exist!`))
       return
     }
@@ -188,10 +191,10 @@ class Mplex extends EE {
 
   _addChan (id, chan, list) {
     chan.once('close', () => {
-      list.delete(id)
+      list[id] = null
     })
 
-    list.set(id, chan)
+    list[id] = chan
     return chan
   }
 
@@ -212,7 +215,7 @@ class Mplex extends EE {
       case consts.type.OUT_MESSAGE:
       case consts.type.IN_MESSAGE: {
         const list = type & 1 ? this._outChannels : this._inChannels
-        const chan = list.get(id)
+        const chan = list[id]
         if (chan) {
           chan.push(data)
         }
@@ -222,7 +225,7 @@ class Mplex extends EE {
       case consts.type.OUT_CLOSE:
       case consts.type.IN_CLOSE: {
         const list = type & 1 ? this._outChannels : this._inChannels
-        const chan = list.get(id)
+        const chan = list[id]
         if (chan) {
           chan.close()
         }
@@ -232,7 +235,7 @@ class Mplex extends EE {
       case consts.type.OUT_RESET:
       case consts.type.IN_RESET: {
         const list = type & 1 ? this._outChannels : this._inChannels
-        const chan = list.get(id)
+        const chan = list[id]
         if (chan) {
           chan.reset()
         }
