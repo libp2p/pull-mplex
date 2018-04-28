@@ -88,7 +88,6 @@ exports.decode = () => {
   }
 
   let length = 0
-  let offset = 0
   let used = 0
   let marker = 0
   let message = null
@@ -114,7 +113,6 @@ exports.decode = () => {
 
         used = 0
         marker = 0
-        offset = 0
         accumulating = false
       }
 
