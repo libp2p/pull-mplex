@@ -154,16 +154,4 @@ describe('plex', () => {
       plex
     )
   })
-
-  describe.skip(`check id`, () => [true, false].forEach((initiator) => {
-    it(`id should be ${initiator ? 'odd' : 'even'}`, () => {
-      const plex = new Plex(initiator)
-
-      const times = 100
-      for (let i = 0; i < times; i++) {
-        const id = plex._nextChanId()
-        expect(Boolean(id & 1)).to.be.eql(initiator)
-      }
-    })
-  }))
 })
