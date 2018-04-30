@@ -170,54 +170,6 @@ describe('node stream multiplex interop', () => {
     }
   })
 
-  // need to implement message size checks
-  it.skip('testing invalid data error', (done) => {
-    const plex = toStream(new Plex())
-
-    plex.on('error', function (err) {
-      if (err) {
-        expect(err.message).to.equal('Incoming message is too big')
-        done()
-      }
-    })
-    // a really stupid thing to do
-    plex.write(Array(50000).join('\xff'))
-  })
-
-  // need to implement message size checks
-  it.skip('overflow', (done) => {
-    let count = 0
-
-    function check () {
-      if (++count === 2) {
-        done()
-      }
-    }
-
-    const plex1 = new MplexCore()
-    const plex2 = new MplexCore({ limit: 10 })
-
-    plex2.on('stream', function (stream) {
-      stream.on('error', function (err) {
-        expect(err.message).to.equal('Incoming message is too big')
-        check()
-      })
-    })
-
-    plex2.on('error', function (err) {
-      if (err) {
-        expect(err.message).to.equal('Incoming message is too big')
-        check()
-      }
-    })
-
-    plex1.pipe(plex2).pipe(plex1)
-
-    const stream = plex1.createStream()
-
-    stream.write(Buffer.alloc(11))
-  })
-
   it('2 buffers packed into 1 chunk', (done) => {
     const pullPlex = new Plex(true)
     const plex1 = toStream(pullPlex)
@@ -347,28 +299,6 @@ describe('node stream multiplex interop', () => {
         })
       }
     }
-  })
-
-  // not sure how to do this with pull streams (prob not required?)
-  it.skip('prefinish + corking', (done) => {
-    const pullPlex = new Plex(true)
-    const plex = toStream(pullPlex)
-    let async = false
-
-    plex.on('prefinish', function () {
-      plex.cork()
-      process.nextTick(function () {
-        async = true
-        plex.uncork()
-      })
-    })
-
-    plex.on('finish', function () {
-      expect(async).to.be.ok()
-      done()
-    })
-
-    plex.end()
   })
 
   it('quick message', (done) => {
