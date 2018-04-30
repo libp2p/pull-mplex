@@ -10,15 +10,16 @@ log.err = debug('pull-plex:coder:err')
 
 const PULL_LENGTH = 10 * 1024
 const empty = Buffer.alloc(0)
-let pool = Buffer.alloc(PULL_LENGTH)
-let used = 0
 
 exports.encode = () => {
+  let pool = Buffer.alloc(PULL_LENGTH)
+  let used = 0
+
   return through(function (msg) {
     const oldUsed = used
     varint.encode(msg[0] << 3 | msg[1], pool, used)
     used += varint.encode.bytes
-    varint.encode(varint.encode(msg[2] ? msg[2].length : 0), pool, used)
+    varint.encode(msg[2] ? msg[2].length : 0, pool, used)
     used += varint.encode.bytes
     this.queue(pool.slice(oldUsed, used)) // send header
 
@@ -27,7 +28,7 @@ exports.encode = () => {
       used = 0
     }
 
-    this.queue(msg[2] || empty)
+    this.queue(msg[2] ? msg[2] : empty)
   })
 }
 
