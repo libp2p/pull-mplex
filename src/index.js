@@ -3,6 +3,7 @@
 const pull = require('pull-stream')
 const pushable = require('pull-pushable')
 const through = require('pull-through')
+const looper = require('looper')
 
 const defautls = require('lodash.defaults')
 
@@ -57,7 +58,7 @@ class Mplex extends EE {
     }
 
     this._chandata = pushable((err) => {
-      // this._log('chandata ended')
+      this._log('mplex ended')
       this._endedRemote = true
       this.close(err)
     })
@@ -82,15 +83,16 @@ class Mplex extends EE {
       }),
       coder.decode(),
       (read) => {
-        function next (end, data) {
-          if (self._endedLocal) { return }
-          if (end === true) { return self.close() }
-          if (end) { return self.reset(end) }
-          self._handle(data)
-          return read(null, next)
-        }
-
-        return read(null, next)
+        const next = looper(() => {
+          read(null, function (end, data) {
+            if (self._endedLocal) { return }
+            if (end === true) { return self.close() }
+            if (end) { return self.reset(end) }
+            self._handle(data)
+            next()
+          })
+        })
+        next()
       })
   }
 
@@ -99,7 +101,7 @@ class Mplex extends EE {
   }
 
   close (err) {
-    // this._log('close', err)
+    this._log('close', err)
 
     if (this.destroyed) { return }
 
@@ -132,14 +134,12 @@ class Mplex extends EE {
   }
 
   push (data) {
-    // this._log('push', data)
     if (data.data &&
       Buffer.byteLength(data.data) > this._maxMsgSize) {
       this._chandata.end(new Error('message too large!'))
     }
 
     this._chandata.push(data)
-    log('buffer', this._chandata.buffer)
   }
 
   _nextChanId () {
@@ -173,7 +173,6 @@ class Mplex extends EE {
     }
 
     id = typeof id === 'number' ? id : this._nextChanId(initiator)
-    // if (list.has(id)) {
     if (list[id]) {
       this.emit('error', new Error(`channel with id ${id} already exist!`))
       return
@@ -203,7 +202,7 @@ class Mplex extends EE {
   }
 
   _handle (msg) {
-    // this._log('_handle', msg)
+    this._log('_handle', msg)
     const { id, type, data } = msg
     switch (type) {
       case consts.type.NEW: {
