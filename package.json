@@ -42,6 +42,7 @@
     "dirty-chai": "^2.0.1",
     "interface-connection": "^0.3.2",
     "lodash.defaults": "^4.2.0",
+    "looper": "^4.0.0",
     "pull-offset-limit": "^1.1.1",
     "pull-pair": "^1.1.0",
     "pull-pushable": "^2.2.0",
