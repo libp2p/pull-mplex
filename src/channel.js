@@ -2,6 +2,7 @@
 
 const pushable = require('pull-pushable')
 const defaults = require('lodash.defaults')
+const looper = require('looper')
 
 const consts = require('./consts')
 const EE = require('events')
@@ -50,10 +51,10 @@ class Channel extends EE {
       })
     }
 
-    // this._log('new channel', this._name)
+    this._log('new channel', this._name)
 
     this._msgs = pushable((err) => {
-      // this._log('source closed', err)
+      this._log('source closed', err)
       if (err && typeof err !== 'boolean') {
         setImmediate(() => this.emit('error', err))
       }
@@ -63,33 +64,33 @@ class Channel extends EE {
     this._source = this._msgs
 
     this.sink = (read) => {
-      const next = (end, data) => {
-        // this._log('sink', data)
+      const next = looper(() => {
+        read(null, (end, data) => {
+          // stream already ended
+          if (this._endedLocal) { return }
 
-        // stream already ended
-        if (this._endedLocal) { return }
+          this._endedLocal = end || false
 
-        this._endedLocal = end || false
+          // source ended, close the stream
+          if (end === true) {
+            return this.endChan()
+          }
 
-        // source ended, close the stream
-        if (end === true) {
-          return this.endChan()
-        }
+          // source errored, reset stream
+          if (end || this._reset) {
+            this.resetChan()
+            this.emit('error', end || this._reset)
+            this.reset()
+            return
+          }
 
-        // source errored, reset stream
-        if (end || this._reset) {
-          this.resetChan()
-          this.emit('error', end || this._reset)
-          this.reset()
-          return
-        }
+          // just send
+          this.sendMsg(data)
+          next()
+        })
+      })
 
-        // just send
-        this.sendMsg(data)
-        return read(null, next)
-      }
-
-      read(null, next)
+      next()
     }
   }
 
@@ -118,13 +119,13 @@ class Channel extends EE {
   }
 
   push (data) {
-    // this._log('push', data)
+    this._log('push', data)
     this._msgs.push(data)
   }
 
   // close for reading
   close (err) {
-    // this._log('close', err)
+    this._log('close', err)
     if (!this._endedRemote) {
       this._endedRemote = err || true
       this._msgs.end(this._endedRemote)
@@ -134,14 +135,12 @@ class Channel extends EE {
   }
 
   reset (err) {
-    // this._log('reset', err)
+    this._log('reset', err)
     this._reset = err || 'channel reset!'
     this.close(this._reset)
   }
 
   openChan () {
-    // this._log('openChan')
-
     if (this.open) { return } // chan already open
 
     let name
@@ -154,7 +153,7 @@ class Channel extends EE {
   }
 
   sendMsg (data) {
-    // this._log('sendMsg', data)
+    this._log('sendMsg')
 
     if (!this.open) {
       this.openChan()
@@ -168,7 +167,7 @@ class Channel extends EE {
   }
 
   endChan () {
-    // this._log('endChan')
+    this._log('endChan')
 
     if (!this.open) {
       return
@@ -181,7 +180,7 @@ class Channel extends EE {
   }
 
   resetChan () {
-    // this._log('endChan')
+    this._log('resetChan')
 
     if (!this.open) {
       return
