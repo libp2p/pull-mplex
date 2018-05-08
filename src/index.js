@@ -84,7 +84,7 @@ class Mplex extends EE {
       coder.decode(),
       (read) => {
         const next = looper(() => {
-          read(null, function (end, data) {
+          read(null, (end, data) => {
             if (self._endedLocal) { return }
             if (end === true) { return self.close() }
             if (end) { return self.reset(end) }
