@@ -142,12 +142,6 @@ class Mplex extends EE {
     this._chandata.push(data)
   }
 
-  _nextChanId () {
-    const id = this._chanId
-    this._chanId += 2
-    return id
-  }
-
   createStream (name) {
     if (typeof name === 'number') { name = name.toString() }
     const chan = this._newStream(null, true, false, name, this._outChannels)
@@ -172,7 +166,7 @@ class Mplex extends EE {
       open = false
     }
 
-    id = typeof id === 'number' ? id : this._nextChanId(initiator)
+    id = typeof id === 'number' ? id : this._chanId++
     if (list[id]) {
       this.emit('error', new Error(`channel with id ${id} already exist!`))
       return
