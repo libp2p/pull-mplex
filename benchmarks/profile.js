@@ -7,7 +7,7 @@ const each = require('async/each')
 const eachLimit = require('async/eachLimit')
 const setImmediate = require('async/setImmediate')
 
-const Plex = require('./src')
+const Plex = require('../src')
 
 const spawn = (nStreams, nMsg, done, limit) => {
   const p = pair()
