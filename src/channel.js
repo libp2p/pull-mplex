@@ -119,7 +119,7 @@ class Channel extends EE {
   }
 
   push (data) {
-    this._log('push', data)
+    this._log('push')
     this._msgs.push(data)
   }
 

@@ -41,7 +41,7 @@ class Mplex extends EE {
     this._lazy = opts.lazy
 
     this._initiator = Boolean(opts.initiator)
-    this._chanId = this._initiator ? 0 : 1
+    this._chanId = 0
     this._inChannels = new Array(this._maxChannels / 2)
     this._outChannels = new Array(this._maxChannels / 2)
     this._endedRemote = false // remote stream ended
