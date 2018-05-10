@@ -145,7 +145,7 @@ class Mplex extends EE {
   createStream (name) {
     if (typeof name === 'number') { name = name.toString() }
     const chan = this._newStream(null, true, false, name, this._outChannels)
-    if (!this._lazy) { chan.openChan() }
+    if (!this._lazy) { chan.openChan(name) }
     return chan
   }
 
