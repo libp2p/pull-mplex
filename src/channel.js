@@ -140,15 +140,14 @@ class Channel extends EE {
     this.close(this._reset)
   }
 
-  openChan () {
+  openChan (name) {
     if (this.open) { return } // chan already open
 
-    let name
     this.open = true
     this._plex.push([
       this._id,
       consts.type.NEW,
-      name !== this._id.toString() ? name : null
+      name !== this._id.toString() ? name : this._id.toString()
     ])
   }
 
@@ -156,7 +155,7 @@ class Channel extends EE {
     this._log('sendMsg')
 
     if (!this.open) {
-      this.openChan()
+      this.openChan(this.name)
     }
 
     this._plex.push([
