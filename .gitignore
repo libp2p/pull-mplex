@@ -9,8 +9,6 @@ test/repo-tests*
 logs
 *.log
 
-coverage
-
 # Runtime data
 pids
 *.pid
