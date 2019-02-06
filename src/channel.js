@@ -3,7 +3,7 @@
 const pushable = require('pull-pushable')
 const looper = require('looper')
 
-const consts = require('./consts')
+const { Types } = require('./consts')
 const EE = require('events')
 
 const debug = require('debug')
@@ -27,16 +27,16 @@ class Channel extends EE {
     this._reset = false
 
     this.MSG = this._initiator
-      ? consts.type.OUT_MESSAGE
-      : consts.type.IN_MESSAGE
+      ? Types.OUT_MESSAGE
+      : Types.IN_MESSAGE
 
     this.END = this._initiator
-      ? consts.type.OUT_CLOSE
-      : consts.type.IN_CLOSE
+      ? Types.OUT_CLOSE
+      : Types.IN_CLOSE
 
     this.RESET = this._initiator
-      ? consts.type.OUT_RESET
-      : consts.type.IN_RESET
+      ? Types.OUT_RESET
+      : Types.IN_RESET
 
     this._log = (name, data) => {
       if (!debug.enabled) return
@@ -146,7 +146,7 @@ class Channel extends EE {
     this.open = true
     this._plex.push([
       this._id,
-      consts.type.NEW,
+      Types.NEW,
       name !== this._id.toString() ? name : this._id.toString()
     ])
   }

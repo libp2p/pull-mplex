@@ -1,6 +1,13 @@
 'use strict'
 
-exports.type = {
+/**
+ * @typedef {number} MessageType
+ */
+
+ /**
+ * @enum {MessageType}
+ */
+exports.Types = {
   NEW: 0,
   IN_MESSAGE: 1,
   OUT_MESSAGE: 2,
