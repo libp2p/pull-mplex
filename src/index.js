@@ -186,6 +186,12 @@ class Mplex extends EE {
     chan.once('close', () => {
       list[id] = null
     })
+    chan.once('error', (_) => {
+      // TODO: Should we handle this? Internally the channel
+      // is handling errors. In node 10+ if we dont catch this
+      // error, it will be thrown. Perhaps channel shouldnt be
+      // emitting errors?
+    })
 
     list[id] = chan
     return chan
