@@ -1,7 +1,6 @@
 'use strict'
 
 const pushable = require('pull-pushable')
-const defaults = require('lodash.defaults')
 const looper = require('looper')
 
 const consts = require('./consts')
@@ -16,7 +15,7 @@ class Channel extends EE {
   constructor (opts) {
     super()
 
-    opts = defaults({}, opts, { initiator: false })
+    opts = { initiator: false, ...opts }
 
     this._id = opts.id
     this._name = opts.name

@@ -5,8 +5,6 @@ const pushable = require('pull-pushable')
 const through = require('pull-through')
 const looper = require('looper')
 
-const defautls = require('lodash.defaults')
-
 const EE = require('events')
 
 const Channel = require('./channel')
@@ -28,13 +26,14 @@ class Mplex extends EE {
       opts = { initiator: opts }
     }
 
-    opts = defautls({}, opts, {
+    opts = {
       initiator: true,
       onChan: null,
       maxChannels: 10000,
       maxMsgSize: MAX_MSG_SIZE,
-      lazy: false
-    })
+      lazy: false,
+      ...opts
+    }
 
     this._maxChannels = opts.maxChannels
     this._maxMsgSize = opts.maxMsgSize

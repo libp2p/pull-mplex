@@ -39,7 +39,6 @@
     "buffer-reuse-pool": "^1.0.0",
     "debug": "^4.1.1",
     "interface-connection": "~0.3.3",
-    "lodash.defaults": "^4.2.0",
     "looper": "^4.0.0",
     "pull-offset-limit": "^1.1.1",
     "pull-pair": "^1.1.0",
@@ -47,10 +46,5 @@
     "pull-stream": "^3.6.9",
     "pull-through": "^1.0.18",
     "varint": "^5.0.0"
-  },
-  "config": {
-    "commitizen": {
-      "path": "./node_modules/cz-conventional-changelog"
-    }
   }
 }
