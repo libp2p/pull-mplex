@@ -4,7 +4,7 @@
  * @typedef {number} MessageType
  */
 
- /**
+/**
  * @enum {MessageType}
  */
 exports.Types = {
@@ -16,3 +16,5 @@ exports.Types = {
   IN_RESET: 5,
   OUT_RESET: 6
 }
+
+exports.MAX_MSG_SIZE = 1 << 20 // 1MB

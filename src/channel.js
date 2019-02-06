@@ -11,7 +11,20 @@ const debug = require('debug')
 const log = debug('pull-plex:chan')
 log.err = debug('pull-plex:chan:err')
 
+/**
+ * @fires Channel#close
+ * @fires Channel#error
+ */
 class Channel extends EE {
+  /**
+   * @constructor
+   * @param {Object} opts
+   * @param {number} opts.id
+   * @param {boolean} opts.initiator
+   * @param {string} opts.name
+   * @param {boolean} opts.open
+   * @param {Mplex} opts.plex
+   */
   constructor (opts) {
     super()
 
@@ -37,19 +50,6 @@ class Channel extends EE {
     this.RESET = this._initiator
       ? Types.OUT_RESET
       : Types.IN_RESET
-
-    this._log = (name, data) => {
-      if (!debug.enabled) return
-      log({
-        op: name,
-        name: this._name,
-        id: this._id,
-        endedLocal: this._endedLocal,
-        endedRemote: this._endedRemote,
-        initiator: this._initiator,
-        data: (data && data.toString()) || ''
-      })
-    }
 
     this._log('new channel', this._name)
 
@@ -118,12 +118,38 @@ class Channel extends EE {
     return this._endedRemote && this._endedLocal
   }
 
+  /**
+   * A convenience wrapper for the log that adds useful metadata to logs
+   * @private
+   * @param {string} name The name of the operation being logged
+   * @param {Buffer|string} data Logged with the metadata. Must be `.toString` capable. Default: `''`
+   */
+  _log (name, data) {
+    if (!debug.enabled) return
+    log({
+      op: name,
+      name: this._name,
+      id: this._id,
+      endedLocal: this._endedLocal,
+      endedRemote: this._endedRemote,
+      initiator: this._initiator,
+      data: (data && data.toString()) || ''
+    })
+  }
+
+  /**
+   * Pushes `data` into the channel
+   * @param {Buffer} data
+   */
   push (data) {
     this._log('push')
     this._msgs.push(data)
   }
 
-  // close for reading
+  /**
+   * Closes the channel for writing
+   * @param {Error} err
+   */
   close (err) {
     this._log('close', err)
     if (!this._endedRemote) {
@@ -134,12 +160,21 @@ class Channel extends EE {
     }
   }
 
+  /**
+   * Closes the channel with the given error
+   * @param {Error} err Default: `'channel reset!'`
+   */
   reset (err) {
     this._log('reset', err)
     this._reset = err || 'channel reset!'
     this.close(this._reset)
   }
 
+  /**
+   * Opens the channel if it's not already open. Attempting
+   * to open an already opened channel is ignored.
+   * @param {string} name
+   */
   openChan (name) {
     if (this.open) { return } // chan already open
 
@@ -151,6 +186,12 @@ class Channel extends EE {
     ])
   }
 
+  /**
+   * Pushes `data` wrapped in a `Message` into the channel.
+   * If the channel is not open, it will be opened automatically.
+   *
+   * @param {Buffer} data
+   */
   sendMsg (data) {
     this._log('sendMsg')
 
@@ -165,6 +206,10 @@ class Channel extends EE {
     ])
   }
 
+  /**
+   * Ends the channel by sending an END `Message`.
+   * If the channel is not open, no action will be taken.
+   */
   endChan () {
     this._log('endChan')
 
@@ -178,6 +223,10 @@ class Channel extends EE {
     ])
   }
 
+  /**
+   * Resets the channel by sending a RESET `Message`.
+   * If the channel is not open, no action will be taken.
+   */
   resetChan () {
     this._log('resetChan')
 

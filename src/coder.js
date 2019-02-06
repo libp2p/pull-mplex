@@ -8,9 +8,17 @@ const debug = require('debug')
 const log = debug('pull-plex:coder')
 log.err = debug('pull-plex:coder:err')
 
+const { MAX_MSG_SIZE } = require('./consts')
+
 const PULL_LENGTH = 10 * 1024
 const empty = Buffer.alloc(0)
 
+/**
+ * Creates a Through PullStream that will varint encode all
+ * messages passed through it.
+ *
+ * @returns {PullStream} A through stream that varint encodes all messages
+ */
 exports.encode = () => {
   let pool = Buffer.alloc(PULL_LENGTH)
   let used = 0
@@ -32,11 +40,24 @@ exports.encode = () => {
   })
 }
 
+/**
+ * @typedef {number} States
+ */
+
+/**
+ * @enum {States}
+ */
 const States = {
   PARSING: 0,
   READING: 1
 }
 
+/**
+ * Creates a Through PullStream that will varint decodes all
+ * messages passed through it.
+ *
+ * @returns {PullStream} A through stream that varint decodes all messages
+ */
 exports.decode = () => {
   let state = States.PARSING
 
@@ -57,6 +78,7 @@ exports.decode = () => {
 
   const decode = (msg) => {
     const [h, offset, length] = tryDecode(msg)
+    // If there is a header, process it
     if (h !== void 0) {
       const message = {
         id: h >> 3,
@@ -68,15 +90,18 @@ exports.decode = () => {
       return [msg.slice(offset), message, length]
     }
 
+    // There was no header, return the message
     return [msg]
   }
 
   const read = (msg, data, length) => {
+    // If we're done reading, start parsing the message
     if (length <= 0) {
       state = States.PARSING
       return [0, msg, data]
     }
 
+    // Read more data
     let left = length - msg.length
     if (left < 0) { left = 0 }
     const size = length - left
@@ -84,6 +109,8 @@ exports.decode = () => {
       const buff = Buffer.isBuffer(msg) ? msg : Buffer.from(msg)
       data.push(buff.slice(0, size))
     }
+
+    // If we finished reading, start parsing
     if (left <= 0) { state = States.PARSING }
     return [left, msg.slice(size), data]
   }
@@ -93,9 +120,10 @@ exports.decode = () => {
   let marker = 0
   let message = null
   let accumulating = false
-  let buffer = Buffer.alloc(1 << 20)
+  let buffer = Buffer.alloc(MAX_MSG_SIZE)
   return through(function (msg) {
     while (msg && msg.length) {
+      // Reading is done for this message, start processing it
       if (States.PARSING === state) {
         if (accumulating) {
           used += msg.copy(buffer, used)
@@ -117,8 +145,11 @@ exports.decode = () => {
         accumulating = false
       }
 
+      // We're not done reading the message, keep reading it
       if (States.READING === state) {
         [length, msg, message.data] = read(msg, message.data, length)
+
+        // If we read the whole message, add it to the queue
         if (length <= 0 && States.PARSING === state) {
           message.data = message.data.length
             ? message.data.length === 1
