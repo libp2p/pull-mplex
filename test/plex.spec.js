@@ -13,7 +13,7 @@ const pair = require('pull-pair/duplex')
 const abortable = require('pull-abortable')
 
 const coder = require('../src/coder')
-const Plex = require('../src')
+const Plex = require('../src/mplex')
 
 const noop = () => {}
 

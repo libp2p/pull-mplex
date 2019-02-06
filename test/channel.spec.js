@@ -17,7 +17,7 @@ const defer = require('pull-defer')
 const lp = require('pull-length-prefixed')
 
 const Connection = require('interface-connection').Connection
-const Plex = require('../src')
+const Plex = require('../src/mplex')
 
 function closeAndWait (stream) {
   pull(
