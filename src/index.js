@@ -8,15 +8,13 @@ const looper = require('looper')
 const EE = require('events')
 
 const Channel = require('./channel')
-const { Types } = require('./consts')
+const { Types, MAX_MSG_SIZE } = require('./consts')
 const coder = require('./coder')
 
 const debug = require('debug')
 
 const log = debug('pull-plex')
 log.err = debug('pull-plex:err')
-
-const MAX_MSG_SIZE = 1 << 20 // 1mb
 
 /**
  * @typedef {Object} Message
@@ -33,7 +31,7 @@ const MAX_MSG_SIZE = 1 << 20 // 1mb
 class Mplex extends EE {
   /**
    * @constructor
-   * @param {object} opts
+   * @param {Object} opts
    * @param {boolean} opts.initiator Is this starting the stream. Default: `true`
    * @param {function(Channel, number)} opts.onChan A handler for new streams. Can be used instead of `.on('stream')`
    * @param {number} opts.maxChannels Maximum number of channels to have open. Default: `10000`
