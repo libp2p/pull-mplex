@@ -39,6 +39,7 @@ class Channel extends EE {
       : consts.type.IN_RESET
 
     this._log = (name, data) => {
+      if (!debug.enabled) return
       log({
         op: name,
         name: this._name,
