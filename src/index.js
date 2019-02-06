@@ -8,7 +8,7 @@ const looper = require('looper')
 const EE = require('events')
 
 const Channel = require('./channel')
-const consts = require('./consts')
+const { Types } = require('./consts')
 const coder = require('./coder')
 
 const debug = require('debug')
@@ -18,7 +18,28 @@ log.err = debug('pull-plex:err')
 
 const MAX_MSG_SIZE = 1 << 20 // 1mb
 
+/**
+ * @typedef {Object} Message
+ * @property {number} id
+ * @property {MessageType} type
+ * @property {Buffer} data
+ */
+
+/**
+ * @fires Mplex#close Emitted when Mplex closes
+ * @fires Mplex#error Emitted when an error occurs
+ * @fires Mplex#stream Emitted when a new stream is opened
+ */
 class Mplex extends EE {
+  /**
+   * @constructor
+   * @param {object} opts
+   * @param {boolean} opts.initiator Is this starting the stream. Default: `true`
+   * @param {function(Channel, number)} opts.onChan A handler for new streams. Can be used instead of `.on('stream')`
+   * @param {number} opts.maxChannels Maximum number of channels to have open. Default: `10000`
+   * @param {number} opts.maxMsgSize Maximum size messages are allowed to be. Default: `1 << 20` (1MB)
+   * @param {boolean} opts.lazy Should channels be opened lazily? If false, channels will be opened when they are created. Default: `false`
+   */
   constructor (opts) {
     super()
 
@@ -46,16 +67,6 @@ class Mplex extends EE {
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
 
-    this._log = (name, data) => {
-      log({
-        op: name,
-        initiator: this._initiator,
-        endedLocal: this._endedLocal,
-        endedRemote: this._endedRemote,
-        data: (data && data.toString()) || ''
-      })
-    }
-
     this._chandata = pushable((err) => {
       this._log('mplex ended')
       this._endedRemote = true
@@ -74,6 +85,7 @@ class Mplex extends EE {
     const self = this
     this.sink = pull(
       through(function (data) {
+        // ensure data is within our max size requirement
         if (data && data.length >= self._maxMsgSize) {
           setImmediate(() => self.emit('error', new Error('message too large!')))
           return this.queue(null)
@@ -95,10 +107,30 @@ class Mplex extends EE {
       })
   }
 
+  /**
+   * A convenience wrapper for the log that adds useful metadata to logs
+   * @private
+   * @param {string} name The name of the operation being logged
+   * @param {Buffer|string} data Logged with the metadata. Must be `.toString` capable. Default: `''`
+   */
+  _log (name, data) {
+    log({
+      op: name,
+      initiator: this._initiator,
+      endedLocal: this._endedLocal,
+      endedRemote: this._endedRemote,
+      data: (data && data.toString()) || ''
+    })
+  }
+
   get initiator () {
     return this._initiator
   }
 
+  /**
+   * Closes all open channels
+   * @param {Error} err Optional error
+   */
   close (err) {
     this._log('close', err)
 
@@ -126,12 +158,20 @@ class Mplex extends EE {
     return this._endedRemote && this._endedLocal
   }
 
+  /**
+   * Resets the parent stream and closes Mplex
+   * @param {Error} err
+   */
   reset (err) {
     err = err || new Error('Underlying stream has been closed')
     this._chandata.end(err)
     this.close(err)
   }
 
+  /**
+   * Pushes data to the stream
+   * @param {Buffer} data
+   */
   push (data) {
     if (data.data &&
       Buffer.byteLength(data.data) > this._maxMsgSize) {
@@ -141,6 +181,13 @@ class Mplex extends EE {
     this._chandata.push(data)
   }
 
+  /**
+   * Creates a new Channel (stream). If Mplex was created with `opts.lazy` set to true,
+   * the channel will not automatically be opened.
+   *
+   * @param {string} name The name of the channel/stream to create
+   * @returns {Channel}
+   */
   createStream (name) {
     if (typeof name === 'number') { name = name.toString() }
     const chan = this._newStream(null, true, false, name, this._outChannels)
@@ -148,6 +195,18 @@ class Mplex extends EE {
     return chan
   }
 
+  /**
+   * Attempts to create a channel if it doesn't already exist.
+   * If a channel already exists for `id`, `Mplex#error` will be emitted.
+   *
+   * @private
+   * @param {number} id The id of the channel. If `null` it will be auto incremented from `Mplex._chanId`
+   * @param {boolean} initiator Is the channel creating the connection
+   * @param {boolean} open Should the channel be opened when created
+   * @param {string} name The name of the channel
+   * @param {Array} list The channel list to add the channel to
+   * @returns {Channel}
+   */
   _newStream (id, initiator, open, name, list) {
     if (this.chanSize >= this._maxChannels) {
       this.emit('error', new Error('max channels exceeded'))
@@ -200,18 +259,25 @@ class Mplex extends EE {
     return this._inChannels.size + this._outChannels.size
   }
 
+  /**
+   * Takes the appropriate course of action based on `msg.type`.
+   * If `msg.type` is not recognized `Mplex#error` will be emitted.
+   * @param {Message} msg
+   */
   _handle (msg) {
     this._log('_handle', msg)
     const { id, type, data } = msg
     switch (type) {
-      case consts.type.NEW: {
+      // Create a new stream
+      case Types.NEW: {
         const chan = this._newStream(id, false, true, data.toString(), this._inChannels)
         setImmediate(() => this.emit('stream', chan, id))
         break
       }
 
-      case consts.type.OUT_MESSAGE:
-      case consts.type.IN_MESSAGE: {
+      // Push the data into the channel with the matching id if it exists
+      case Types.OUT_MESSAGE:
+      case Types.IN_MESSAGE: {
         const list = type & 1 ? this._outChannels : this._inChannels
         const chan = list[id]
         if (chan) {
@@ -220,8 +286,9 @@ class Mplex extends EE {
         break
       }
 
-      case consts.type.OUT_CLOSE:
-      case consts.type.IN_CLOSE: {
+      // Close the channel with the matching id
+      case Types.OUT_CLOSE:
+      case Types.IN_CLOSE: {
         const list = type & 1 ? this._outChannels : this._inChannels
         const chan = list[id]
         if (chan) {
@@ -230,8 +297,9 @@ class Mplex extends EE {
         break
       }
 
-      case consts.type.OUT_RESET:
-      case consts.type.IN_RESET: {
+      // Reset the channel with the matching id
+      case Types.OUT_RESET:
+      case Types.IN_RESET: {
         const list = type & 1 ? this._outChannels : this._inChannels
         const chan = list[id]
         if (chan) {
