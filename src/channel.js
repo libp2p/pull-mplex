@@ -2,6 +2,7 @@
 
 const pushable = require('pull-pushable')
 const looper = require('looper')
+const nextTick = require('async/nextTick')
 
 const { Types } = require('./consts')
 const EE = require('events')
@@ -56,7 +57,7 @@ class Channel extends EE {
     this._msgs = pushable((err) => {
       this._log('source closed', err)
       if (err && typeof err !== 'boolean') {
-        setImmediate(() => this.emit('error', err))
+        nextTick(() => this.emit('error', err))
       }
       // this.endChan() // TODO: do not uncomment this, it will end the channel too early
     })
