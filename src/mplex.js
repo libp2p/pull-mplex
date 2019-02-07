@@ -4,6 +4,7 @@ const pull = require('pull-stream')
 const pushable = require('pull-pushable')
 const through = require('pull-through')
 const looper = require('looper')
+const nextTick = require('async/nextTick')
 
 const EE = require('events')
 
@@ -85,7 +86,7 @@ class Mplex extends EE {
       through(function (data) {
         // ensure data is within our max size requirement
         if (data && data.length >= self._maxMsgSize) {
-          setImmediate(() => self.emit('error', new Error('message too large!')))
+          nextTick(() => self.emit('error', new Error('message too large!')))
           return this.queue(null)
         }
         this.queue(data)
@@ -135,7 +136,7 @@ class Mplex extends EE {
     if (this.destroyed) { return }
 
     if (err) {
-      setImmediate(() => this.emit('error', err))
+      nextTick(() => this.emit('error', err))
     }
 
     err = err || 'Underlying stream has been closed'
@@ -242,11 +243,8 @@ class Mplex extends EE {
     chan.once('close', () => {
       list[id] = null
     })
-    chan.once('error', (_) => {
-      // TODO: Should we handle this? Internally the channel
-      // is handling errors. In node 10+ if we dont catch this
-      // error, it will be thrown. Perhaps channel shouldnt be
-      // emitting errors?
+    chan.once('error', (err) => {
+      log.err('channel error', err)
     })
 
     list[id] = chan
@@ -269,7 +267,7 @@ class Mplex extends EE {
       // Create a new stream
       case Types.NEW: {
         const chan = this._newStream(id, false, true, data.toString(), this._inChannels)
-        setImmediate(() => this.emit('stream', chan, id))
+        nextTick(() => this.emit('stream', chan, id))
         break
       }
 
