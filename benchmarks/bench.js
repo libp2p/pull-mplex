@@ -11,13 +11,18 @@ const parallel = require('fastparallel')({
 const pull = require('pull-stream')
 const toPull = require('stream-to-pull-stream')
 
+let msgs
+let runs
+
 const argv = minimist(process.argv.slice(2), {
   boolean: 'child',
   default: {
     child: true,
     port: 3000,
     host: 'localhost',
-    lib: 'pull-mplex'
+    lib: 'pull-mplex',
+    msgs: 100,
+    runs: 3
   }
 })
 
@@ -25,6 +30,8 @@ function buildPingPong (cb) {
   let child
   let dialer
   const mplex = require(argv.lib || 'pull-mplex')
+  msgs = argv.msgs
+  runs = argv.runs
 
   if (argv.child) {
     child = childProcess.fork(path.join(__dirname, 'mplex-echo.js'), {
@@ -85,10 +92,11 @@ function times (num, run, cb) {
 buildPingPong(function (err, benchPingPong) {
   if (err) throw err
 
-  var run = bench([benchPingPong], 100)
+  // ping pong `msgs` many messages
+  const run = bench([benchPingPong], msgs)
 
-  // Do it 5 times
-  times(5, run, function () {
+  // Do it `runs` many times
+  times(runs, run, function () {
     // close the sockets the bad way
     process.exit(0)
   })
