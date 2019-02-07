@@ -2,7 +2,7 @@
 
 const EventEmitter = require('events').EventEmitter
 const Connection = require('interface-connection').Connection
-const setImmediate = require('async/setImmediate')
+const nextTick = require('async/nextTick')
 const debug = require('debug')
 
 const log = debug('libp2p-mplex:muxer')
@@ -15,8 +15,8 @@ function noop () {}
 class MultiplexMuxer extends EventEmitter {
   constructor (conn, multiplex) {
     super()
-    this.multiplex = multiplex
     this.conn = conn
+    this.multiplex = multiplex
     this.multicodec = MULTIPLEX_CODEC
 
     multiplex.on('close', () => this.emit('close'))
@@ -40,7 +40,7 @@ class MultiplexMuxer extends EventEmitter {
       log.err('initiator stream errored', err)
     })
     const conn = new Connection(stream, this.conn)
-    setImmediate(() => callback(null, conn))
+    nextTick(() => callback(null, conn))
     return conn
   }
 

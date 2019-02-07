@@ -1,0 +1,17 @@
+{
+  "name": "getting-started",
+  "version": "1.0.0",
+  "description": "A basic example of pull-mplex",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "pull-mplex": "../../",
+    "pull-pushable": "^2.2.0",
+    "pull-stream": "^3.6.9",
+    "stream-to-pull-stream": "^1.7.2"
+  }
+}

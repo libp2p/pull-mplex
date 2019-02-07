@@ -1,8 +1,26 @@
 {
   "name": "pull-mplex",
   "version": "0.0.1",
-  "description": "multiplex implementation of https://github.com/libp2p/mplex",
+  "description": "pull-stream based multiplex implementation of https://github.com/libp2p/mplex",
+  "leadMaintainer": "Jacob Heun <jacobheun@gmail.com>",
   "main": "src/index.js",
+  "files": [
+    "src",
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/libp2p/pull-mplex.git"
+  },
+  "keywords": [
+    "libp2p",
+    "muxer"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/libp2p/pull-mplex/issues"
+  },
+  "homepage": "https://github.com/libp2p/pull-mplex#readme",
   "scripts": {
     "lint": "aegir lint",
     "build": "aegir build",
@@ -15,8 +33,6 @@
     "coverage": "aegir coverage",
     "coverage-publish": "aegir coverage --provider coveralls"
   },
-  "author": "dryajov@gmail.com",
-  "license": "MIT",
   "devDependencies": {
     "aegir": "^18.0.3",
     "chai": "^4.2.0",
@@ -30,10 +46,6 @@
     "pull-length-prefixed": "^1.3.1",
     "pull-stream-to-stream": "^1.3.4",
     "pump": "^3.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/libp2p/pull-mplex.git"
   },
   "dependencies": {
     "async": "^2.6.1",

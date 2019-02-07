@@ -194,7 +194,7 @@ class Channel extends EE {
    * @param {Buffer} data
    */
   sendMsg (data) {
-    this._log('sendMsg')
+    this._log('sendMsg', data)
 
     if (!this.open) {
       this.openChan(this.name)
