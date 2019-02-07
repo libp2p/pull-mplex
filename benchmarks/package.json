@@ -1,0 +1,22 @@
+{
+  "name": "benchmarks",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bench.js",
+  "scripts": {
+    "pull-mplex": "node bench.js --lib=pull-mplex",
+    "libp2p-mplex": "node bench.js --lib=libp2p-mplex"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fastbench": "^1.0.1",
+    "fastparallel": "^2.3.0",
+    "libp2p-mplex": "~0.8.4",
+    "minimist": "^1.2.0",
+    "pull-mplex": "../",
+    "pull-stream": "^3.6.9",
+    "stream-to-pull-stream": "^1.7.2"
+  }
+}
