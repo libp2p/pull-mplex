@@ -3,15 +3,13 @@
 const minimist = require('minimist')
 const bench = require('fastbench')
 const net = require('net')
-const childProcess = require('child_process')
-const path = require('path')
 const parallel = require('fastparallel')({
   results: false
 })
 const pull = require('pull-stream')
 const toPull = require('stream-to-pull-stream')
 
-let msgs
+let repeat
 let runs
 
 const argv = minimist(process.argv.slice(2), {
@@ -21,38 +19,46 @@ const argv = minimist(process.argv.slice(2), {
     port: 3000,
     host: 'localhost',
     lib: 'pull-mplex',
-    msgs: 100,
+    repeat: 100,
     runs: 3
   }
 })
 
-function buildPingPong (cb) {
-  let child
+function buildPingPong (callback) {
   let dialer
   const mplex = require(argv.lib || 'pull-mplex')
-  msgs = argv.msgs
+  repeat = argv.repeat
   runs = argv.runs
 
-  if (argv.child) {
-    child = childProcess.fork(path.join(__dirname, 'mplex-echo.js'), {
-      stdio: 'inherit'
+  start(argv)
+
+  function startServer (addr, cb) {
+    const server = net.createServer(function (socket) {
+      const connection = toPull.duplex(socket)
+      const listener = mplex.listener(connection)
+
+      listener.on('stream', (stream) => {
+        pull(
+          stream,
+          stream
+        )
+      })
     })
-
-    child.on('message', start)
-
-    child.on('error', cb)
-
-    child.on('exit', console.log)
-  } else {
-    start(argv)
+    server.listen(addr.port, function (err) {
+      if (err) throw err
+      cb()
+    })
   }
 
   function start (addr) {
-    const client = net.connect(addr.port, addr.host)
-    client.on('connect', function () {
-      const connection = toPull.duplex(client)
-      dialer = mplex.dialer(connection)
-      cb(null, benchPingPong)
+    startServer(addr, function() {
+      // Create the dialer
+      dialer = net.connect(addr.port, addr.host)
+      dialer.on('connect', function () {
+        const connection = toPull.duplex(dialer)
+        dialer = mplex.dialer(connection)
+        callback(null, benchPingPong)
+      })
     })
   }
 
@@ -92,8 +98,8 @@ function times (num, run, cb) {
 buildPingPong(function (err, benchPingPong) {
   if (err) throw err
 
-  // ping pong `msgs` many messages
-  const run = bench([benchPingPong], msgs)
+  // run benchPingPong `repeat` many times
+  const run = bench([benchPingPong], repeat)
 
   // Do it `runs` many times
   times(runs, run, function () {
