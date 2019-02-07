@@ -39,7 +39,7 @@
     "chai-checkmark": "^1.0.1",
     "chunky": "0.0.0",
     "dirty-chai": "^2.0.1",
-    "interface-stream-muxer": "^0.6.0",
+    "interface-stream-muxer": "~0.6.0",
     "libp2p-mplex": "~0.8.4",
     "pull-abortable": "^4.1.1",
     "pull-generate": "^2.2.0",
