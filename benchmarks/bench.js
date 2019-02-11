@@ -24,6 +24,11 @@ const argv = minimist(process.argv.slice(2), {
   }
 })
 
+/**
+ * Starts the needed servers, creates the connections and then
+ * calls back with the benchmark function to execute
+ * @param {function(function)} callback
+ */
 function buildPingPong (callback) {
   let dialer
   const mplex = require(argv.lib || 'pull-mplex')
@@ -51,7 +56,7 @@ function buildPingPong (callback) {
   }
 
   function start (addr) {
-    startServer(addr, function() {
+    startServer(addr, function () {
       // Create the dialer
       dialer = net.connect(addr.port, addr.host)
       dialer.on('connect', function () {
