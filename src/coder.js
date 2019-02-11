@@ -20,7 +20,7 @@ const empty = Buffer.alloc(0)
  * @returns {PullStream} A through stream that varint encodes all messages
  */
 exports.encode = () => {
-  let pool = Buffer.alloc(PULL_LENGTH)
+  let pool = Buffer.allocUnsafe(PULL_LENGTH)
   let used = 0
 
   return through(function (msg) {
@@ -32,7 +32,7 @@ exports.encode = () => {
     this.queue(pool.slice(oldUsed, used)) // send header
 
     if (PULL_LENGTH - used < 100) {
-      pool = Buffer.alloc(PULL_LENGTH)
+      pool = Buffer.allocUnsafe(PULL_LENGTH)
       used = 0
     }
 
@@ -120,7 +120,7 @@ exports.decode = () => {
   let marker = 0
   let message = null
   let accumulating = false
-  let buffer = Buffer.alloc(MAX_MSG_SIZE)
+  let buffer = Buffer.allocUnsafe(MAX_MSG_SIZE)
   return through(function (msg) {
     while (msg && msg.length) {
       // Reading is done for this message, start processing it

@@ -40,7 +40,7 @@ class MultiplexMuxer extends EventEmitter {
       log.err('initiator stream errored', err)
     })
     const conn = new Connection(stream, this.conn)
-    nextTick(() => callback(null, conn))
+    nextTick(callback, null, conn)
     return conn
   }
 

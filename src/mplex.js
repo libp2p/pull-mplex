@@ -5,9 +5,9 @@ const pushable = require('pull-pushable')
 const through = require('pull-through')
 const looper = require('looper')
 const nextTick = require('async/nextTick')
-
 const EE = require('events')
 
+const { emitError, emitStream } = require('./util')
 const Channel = require('./channel')
 const { Types, MAX_MSG_SIZE } = require('./consts')
 const coder = require('./coder')
@@ -267,7 +267,7 @@ class Mplex extends EE {
       // Create a new stream
       case Types.NEW: {
         const chan = this._newStream(id, false, true, data.toString(), this._inChannels)
-        nextTick(() => this.emit('stream', chan, id))
+        nextTick(emitStream, this, chan, id)
         break
       }
 
@@ -305,7 +305,7 @@ class Mplex extends EE {
       }
 
       default:
-        this.emit('error', new Error('Invalid message type'))
+        nextTick(emitError, this, new Error('Invalid message type'))
     }
   }
 }
