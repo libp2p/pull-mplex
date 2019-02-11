@@ -19,30 +19,29 @@ log.err = debug('pull-plex:chan:err')
  * @returns {function} The sink function
  */
 function channelSink (channel) {
-  const self = channel
   return function (read) {
     const next = looper(function () {
       read(null, function (end, data) {
         // stream already ended
-        if (self._endedLocal) { return }
+        if (channel._endedLocal) { return }
 
-        self._endedLocal = end || false
+        channel._endedLocal = end || false
 
         // source ended, close the stream
         if (end === true) {
-          return self.endChan()
+          return channel.endChan()
         }
 
         // source errored, reset stream
-        if (end || self._reset) {
-          self.resetChan()
-          self.emit('error', end || self._reset)
-          self.reset()
+        if (end || channel._reset) {
+          channel.resetChan()
+          channel.emit('error', end || channel._reset)
+          channel.reset()
           return
         }
 
         // just send
-        self.sendMsg(data)
+        channel.sendMsg(data)
         next()
       })
     })
