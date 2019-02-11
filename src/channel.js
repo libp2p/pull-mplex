@@ -16,11 +16,12 @@ log.err = debug('pull-plex:chan:err')
  * Creates a pull-stream sink for the given Channel
  * @private
  * @param {Channel} channel
+ * @returns {function} The sink function
  */
 function channelSink (channel) {
   const self = channel
-  return function(read) {
-    const next = looper(function() {
+  return function (read) {
+    const next = looper(function () {
       read(null, function (end, data) {
         // stream already ended
         if (self._endedLocal) { return }
