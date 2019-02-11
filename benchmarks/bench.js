@@ -11,6 +11,7 @@ const toPull = require('stream-to-pull-stream')
 
 let repeat
 let runs
+let max
 
 const argv = minimist(process.argv.slice(2), {
   boolean: 'child',
@@ -19,6 +20,7 @@ const argv = minimist(process.argv.slice(2), {
     port: 3000,
     host: 'localhost',
     lib: 'pull-mplex',
+    sends: 1000,
     repeat: 100,
     runs: 3
   }
@@ -34,6 +36,7 @@ function buildPingPong (callback) {
   const mplex = require(argv.lib || 'pull-mplex')
   repeat = argv.repeat
   runs = argv.runs
+  max = argv.sends
 
   start(argv)
 
@@ -67,7 +70,6 @@ function buildPingPong (callback) {
     })
   }
 
-  const max = 1000
   let functions = new Array(max)
 
   for (let i = 0; i < max; i++) {

@@ -13,8 +13,9 @@ Benchmarks for both pull-mplex and libp2p-mplex
 This test will send a ping message from the dialer to the listener, which is echo'd back to the dialer.
 A new stream will be created for each echo.
 
-**pull-mplex**: `node bench.js --lib=pull-mplex --repeat=100 --runs=3`
-**libp2p-mplex**: `node bench.js --lib=libp2p-mplex --repeat=100 --runs=3`
+All flags can be omitted aside from `--lib`. The defaults are shown here for reference.
+**pull-mplex**: `node bench.js --lib=pull-mplex --sends=1000 --repeat=100 --runs=3`
+**libp2p-mplex**: `node bench.js --lib=libp2p-mplex --sends=1000 --repeat=100 --runs=3`
 
 You should see results like:
 ```sh
