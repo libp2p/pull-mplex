@@ -13,6 +13,44 @@ const log = debug('pull-plex:chan')
 log.err = debug('pull-plex:chan:err')
 
 /**
+ * Creates a pull-stream sink for the given Channel
+ * @private
+ * @param {Channel} channel
+ */
+function channelSink (channel) {
+  const self = channel
+  return function(read) {
+    const next = looper(function() {
+      read(null, function (end, data) {
+        // stream already ended
+        if (self._endedLocal) { return }
+
+        self._endedLocal = end || false
+
+        // source ended, close the stream
+        if (end === true) {
+          return self.endChan()
+        }
+
+        // source errored, reset stream
+        if (end || self._reset) {
+          self.resetChan()
+          self.emit('error', end || self._reset)
+          self.reset()
+          return
+        }
+
+        // just send
+        self.sendMsg(data)
+        next()
+      })
+    })
+
+    next()
+  }
+}
+
+/**
  * @fires Channel#close
  * @fires Channel#error
  */
@@ -59,40 +97,11 @@ class Channel extends EE {
       if (err && typeof err !== 'boolean') {
         nextTick(() => this.emit('error', err))
       }
-      // this.endChan() // TODO: do not uncomment this, it will end the channel too early
+      // this.endChan() // Do not uncomment this, it will end the channel too early
     })
 
     this._source = this._msgs
-
-    this.sink = (read) => {
-      const next = looper(() => {
-        read(null, (end, data) => {
-          // stream already ended
-          if (this._endedLocal) { return }
-
-          this._endedLocal = end || false
-
-          // source ended, close the stream
-          if (end === true) {
-            return this.endChan()
-          }
-
-          // source errored, reset stream
-          if (end || this._reset) {
-            this.resetChan()
-            this.emit('error', end || this._reset)
-            this.reset()
-            return
-          }
-
-          // just send
-          this.sendMsg(data)
-          next()
-        })
-      })
-
-      next()
-    }
+    this.sink = channelSink(this)
   }
 
   get source () {
