@@ -5,6 +5,7 @@ pull-plex
 [![](https://img.shields.io/badge/freenode-%23libp2p-blue.svg?style=flat-square)](http://webchat.freenode.net/?channels=%23libp2p)
 [![Dependency Status](https://david-dm.org/libp2p/pull-mplex.svg?style=flat-square)](https://david-dm.org/libp2p/pull-mplex)
 [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/feross/standard)
+[![Travis CI](https://flat.badgen.net/travis/libp2p/pull-mplex)](https://travis-ci.com/libp2p/pull-mplex)
 
 > pull-streams based multiplexer implementing the [mplex spec](https://github.com/libp2p/specs/blob/48b3377/mplex/README.md)
 
