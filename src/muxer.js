@@ -5,10 +5,10 @@ const Connection = require('interface-connection').Connection
 const nextTick = require('async/nextTick')
 const debug = require('debug')
 
+const MULTIPLEX_CODEC = require('./codec')
+
 const log = debug('libp2p-mplex:muxer')
 log.err = debug('libp2p-mplex:muxer:error')
-
-const MULTIPLEX_CODEC = require('./codec')
 
 function noop () {}
 

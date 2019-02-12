@@ -220,7 +220,7 @@ describe('channel', () => {
     )
   })
 
-  it('should reset channels', (done) => {
+  it('should destroy channels', (done) => {
     const p = pair()
 
     const plex1 = new Plex(true)

@@ -6,13 +6,12 @@ const through = require('pull-through')
 const looper = require('looper')
 const nextTick = require('async/nextTick')
 const EE = require('events')
+const debug = require('debug')
 
 const { emitError, emitStream } = require('./util')
-const Channel = require('./channel')
 const { Types, MAX_MSG_SIZE } = require('./consts')
+const Channel = require('./channel')
 const coder = require('./coder')
-
-const debug = require('debug')
 
 const log = debug('pull-plex')
 log.err = debug('pull-plex:err')
@@ -97,7 +96,7 @@ class Mplex extends EE {
           read(null, (end, data) => {
             if (self._endedLocal) { return }
             if (end === true) { return self.close() }
-            if (end) { return self.reset(end) }
+            if (end) { return self.destroy(end) }
             self._handle(data)
             next()
           })
@@ -158,10 +157,10 @@ class Mplex extends EE {
   }
 
   /**
-   * Resets the parent stream and closes Mplex
+   * Destroys the parent stream and closes Mplex
    * @param {Error} err
    */
-  reset (err) {
+  destroy (err) {
     err = err || new Error('Underlying stream has been closed')
     this._chandata.end(err)
     this.close(err)
@@ -239,6 +238,14 @@ class Mplex extends EE {
     return this._addChan(id, chan, list)
   }
 
+  /**
+   * A convenience method for setting the `chan` up to be tracked.
+   * @private
+   * @param {number} id The id of the channel
+   * @param {Channel} chan The channel to track
+   * @param {Array} list The channel list to add the channel to
+   * @returns {Channel} `chan`
+   */
   _addChan (id, chan, list) {
     chan.once('close', () => {
       list[id] = null
@@ -293,13 +300,13 @@ class Mplex extends EE {
         break
       }
 
-      // Reset the channel with the matching id
+      // Destroys the channel with the matching id
       case Types.OUT_RESET:
       case Types.IN_RESET: {
         const list = type & 1 ? this._outChannels : this._inChannels
         const chan = list[id]
         if (chan) {
-          chan.reset()
+          chan.destroy()
         }
         break
       }

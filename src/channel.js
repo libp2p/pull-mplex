@@ -32,11 +32,11 @@ function channelSink (channel) {
           return channel.endChan()
         }
 
-        // source errored, reset stream
-        if (end || channel._reset) {
-          channel.resetChan()
-          channel.emit('error', end || channel._reset)
-          channel.reset()
+        // source errored, destroy stream
+        if (end || channel._destroy) {
+          channel.destroyChan()
+          channel.emit('error', end || channel._destroy)
+          channel.destroy()
           return
         }
 
@@ -76,7 +76,7 @@ class Channel extends EE {
     this._initiator = opts.initiator
     this._endedRemote = false // remote stream ended
     this._endedLocal = false // local stream ended
-    this._reset = false
+    this._destroy = false
 
     this.MSG = this._initiator
       ? Types.OUT_MESSAGE
@@ -172,12 +172,12 @@ class Channel extends EE {
 
   /**
    * Closes the channel with the given error
-   * @param {Error} err Default: `'channel reset!'`
+   * @param {Error} err Default: `'channel destroyed!'`
    */
-  reset (err) {
-    this._log('reset', err)
-    this._reset = err || 'channel reset!'
-    this.close(this._reset)
+  destroy (err) {
+    this._log('destroy', err)
+    this._destroy = err || 'channel destroyed!'
+    this.close(this._destroy)
   }
 
   /**
@@ -234,11 +234,11 @@ class Channel extends EE {
   }
 
   /**
-   * Resets the channel by sending a RESET `Message`.
+   * Destroys the channel by sending a RESET `Message`.
    * If the channel is not open, no action will be taken.
    */
-  resetChan () {
-    this._log('resetChan')
+  destroyChan () {
+    this._log('destroyChan')
 
     if (!this.open) {
       return

@@ -2,13 +2,12 @@
 
 const varint = require('varint')
 const through = require('pull-through')
-
 const debug = require('debug')
+
+const { MAX_MSG_SIZE } = require('./consts')
 
 const log = debug('pull-plex:coder')
 log.err = debug('pull-plex:coder:err')
-
-const { MAX_MSG_SIZE } = require('./consts')
 
 const PULL_LENGTH = 10 * 1024
 const empty = Buffer.alloc(0)
