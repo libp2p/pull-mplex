@@ -86,7 +86,7 @@ class Mplex extends EE {
       through(function (data) {
         // ensure data is within our max size requirement
         if (data && data.length >= self._maxMsgSize) {
-          nextTick(() => self.emit('error', new Error('message too large!')))
+          nextTick(emitError, self, new Error('message too large!'))
           return this.queue(null)
         }
         this.queue(data)
@@ -136,7 +136,7 @@ class Mplex extends EE {
     if (this.destroyed) { return }
 
     if (err) {
-      nextTick(() => this.emit('error', err))
+      nextTick(emitError, this, err)
     }
 
     err = err || 'Underlying stream has been closed'
