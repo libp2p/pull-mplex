@@ -116,51 +116,49 @@ exports.decode = () => {
   }
 
   let length = 0
-  let used = 0
-  let marker = 0
   let message = null
   let accumulating = false
-  let buffer = Buffer.allocUnsafe(MAX_MSG_SIZE)
+  let array = []
   return through(function (msg) {
-    while (msg && msg.length) {
-      // Reading is done for this message, start processing it
-      if (States.PARSING === state) {
-        if (accumulating) {
-          used += msg.copy(buffer, used)
-          msg = buffer.slice(marker, used)
-        }
-
-        [msg, message, length] = decode(msg)
-        if (!message) {
-          if (!accumulating) {
-            marker = used
-            used += msg.copy(buffer, used)
+    var ps = this
+    function more() {
+      if (msg && msg.length) {
+        // Reading is done for this message, start processing it
+        if (States.PARSING === state) {
+          if (accumulating) {
+            array.push(msg)
+            msg = Buffer.concat(array)
           }
-          accumulating = true
-          return
+
+          [msg, message, length] = decode(msg)
+          if (!message) {
+            if (!accumulating) {
+              array.push(msg)
+            }
+            accumulating = true
+            return
+          }
+
+          array = []
+          accumulating = false
         }
 
-        used = 0
-        marker = 0
-        accumulating = false
-      }
+        // We're not done reading the message, keep reading it
+        if (States.READING === state) {
+          [length, msg, message.data] = read(msg, message.data, length)
 
-      // We're not done reading the message, keep reading it
-      if (States.READING === state) {
-        [length, msg, message.data] = read(msg, message.data, length)
-
-        // If we read the whole message, add it to the queue
-        if (length <= 0 && States.PARSING === state) {
-          message.data = message.data.length
-            ? message.data.length === 1
-              ? message.data[0]
-              : Buffer.concat(message.data)
-            : empty // get new buffer
-          this.queue(message)
-          message = null
-          length = 0
+          // If we read the whole message, add it to the queue
+          if (length <= 0 && States.PARSING === state) {
+            message.data = Buffer.concat(message.data)
+            ps.queue(message)
+            message = null
+            length = 0
+          }
         }
+
+        more()
       }
     }
+    more()
   })
 }

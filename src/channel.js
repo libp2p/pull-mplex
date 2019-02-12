@@ -3,11 +3,11 @@
 const pushable = require('pull-pushable')
 const looper = require('looper')
 const nextTick = require('async/nextTick')
+const EE = require('events')
+const debug = require('debug')
 
 const { Types } = require('./consts')
-const EE = require('events')
-
-const debug = require('debug')
+const { emitError } = require('./util')
 
 const log = debug('pull-plex:chan')
 log.err = debug('pull-plex:chan:err')
@@ -95,7 +95,7 @@ class Channel extends EE {
     this._msgs = pushable((err) => {
       this._log('source closed', err)
       if (err && typeof err !== 'boolean') {
-        nextTick(() => this.emit('error', err))
+        nextTick(emitError, this, err)
       }
       // this.endChan() // Do not uncomment this, it will end the channel too early
     })
