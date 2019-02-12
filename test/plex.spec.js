@@ -18,7 +18,7 @@ const Plex = require('../src/mplex')
 const noop = () => {}
 
 describe('plex', () => {
-  it(`reset should close both ends`, (done) => {
+  it(`destroy should close both ends`, (done) => {
     const p = pair()
 
     const plex1 = new Plex(true)
@@ -42,7 +42,7 @@ describe('plex', () => {
     plex2.on('close', () => {
       expect().mark()
     })
-    plex1.reset()
+    plex1.destroy()
   })
 
   it(`closing stream should close all channels`, (done) => {

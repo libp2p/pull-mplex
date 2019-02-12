@@ -34,7 +34,7 @@
     "coverage-publish": "aegir coverage --provider coveralls"
   },
   "devDependencies": {
-    "aegir": "^18.0.3",
+    "aegir": "^18.1.0",
     "chai": "^4.2.0",
     "chai-checkmark": "^1.0.1",
     "chunky": "0.0.0",
