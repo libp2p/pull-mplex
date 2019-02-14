@@ -4,9 +4,10 @@ const mplex = require('pull-mplex')
 const tcp = require('net')
 const pull = require('pull-stream')
 const toPull = require('stream-to-pull-stream')
+const { PORT } = require('./constants')
 
 // Connect to the listener server
-const connection = tcp.connect(9999, function () {
+const connection = tcp.connect(PORT, function () {
   // Create the muxer with the pull-stream converted socket connection
   const dialer = mplex.dialer(toPull.duplex(connection))
 

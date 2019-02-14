@@ -4,6 +4,7 @@ const mplex = require('pull-mplex')
 const tcp = require('net')
 const pull = require('pull-stream')
 const toPull = require('stream-to-pull-stream')
+const { PORT } = require('./constants')
 
 const server = tcp.createServer((socket) => {
   console.log('[listener] Got connection!')
@@ -23,6 +24,6 @@ const server = tcp.createServer((socket) => {
   })
 })
 
-server.listen(9999, () => {
-  console.log('[listener] listening on 9999')
+server.listen(PORT, () => {
+  console.log(`[listener] listening on ${PORT}`)
 })
