@@ -4,8 +4,6 @@ const varint = require('varint')
 const through = require('pull-through')
 const debug = require('debug')
 
-const { MAX_MSG_SIZE } = require('./consts')
-
 const log = debug('pull-plex:coder')
 log.err = debug('pull-plex:coder:err')
 
@@ -120,7 +118,7 @@ exports.decode = () => {
   let array = []
   return through(function (msg) {
     var ps = this
-    function more() {
+    function more () {
       if (msg && msg.length) {
         // Reading is done for this message, start processing it
         if (States.PARSING === state) {

@@ -11,6 +11,12 @@ const Muxer = require('./muxer')
 const log = debug('pull-plex')
 log.err = debug('pull-plex:err')
 
+/**
+ * Wraps `conn` with a `StreamMuxer` and returns the `StreamMuxer`
+ * @param {Connection} conn An `interface-connection` compliant connection
+ * @param {boolean} isListener Whether or not the muxer is the listener
+ * @returns {StreamMuxer}
+ */
 function create (conn, isListener) {
   const mpx = new Mplex(!isListener)
   const aborter = abortable()
