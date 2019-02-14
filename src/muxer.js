@@ -13,6 +13,11 @@ log.err = debug('libp2p-mplex:muxer:error')
 function noop () {}
 
 class MultiplexMuxer extends EventEmitter {
+  /**
+   * @constructor
+   * @param {Connection} conn
+   * @param {Mplex} multiplex
+   */
   constructor (conn, multiplex) {
     super()
     this.conn = conn
@@ -31,7 +36,11 @@ class MultiplexMuxer extends EventEmitter {
     })
   }
 
-  // method added to enable pure stream muxer feeling
+  /**
+   * Creates a new stream from the `Connection` used in creating the muxer
+   * @param {function(Error, Connection)} callback
+   * @returns {Connection}
+   */
   newStream (callback) {
     callback = callback || noop
     let stream = this.multiplex.createStream()
@@ -44,6 +53,10 @@ class MultiplexMuxer extends EventEmitter {
     return conn
   }
 
+  /**
+   * Ends the connection and all of its streams
+   * @param {function(Error)} callback
+   */
   end (callback) {
     callback = callback || noop
     this.multiplex.once('close', callback)
