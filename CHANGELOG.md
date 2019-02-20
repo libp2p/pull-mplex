@@ -1,3 +1,13 @@
+<a name="0.1.1"></a>
+## [0.1.1](https://github.com/libp2p/pull-mplex/compare/v0.1.0...v0.1.1) (2019-02-20)
+
+
+### Bug Fixes
+
+* properly check if debug is enabled ([45597f9](https://github.com/libp2p/pull-mplex/commit/45597f9))
+
+
+
 <a name="0.1.0"></a>
 # 0.1.0 (2019-02-14)
 
