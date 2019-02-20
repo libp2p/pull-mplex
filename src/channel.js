@@ -135,7 +135,7 @@ class Channel extends EE {
    * @param {Buffer|string} data Logged with the metadata. Must be `.toString` capable. Default: `''`
    */
   _log (name, data) {
-    if (!debug.enabled) return
+    if (!log.enabled) return
     log({
       op: name,
       name: this._name,
