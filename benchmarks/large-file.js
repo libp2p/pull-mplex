@@ -1,17 +1,18 @@
 'use strict'
 
+const path = require('path')
 const minimist = require('minimist')
 const bench = require('fastbench')
 const net = require('net')
-const parallel = require('fastparallel')({
-  results: false
-})
+
 const pull = require('pull-stream')
 const toPull = require('stream-to-pull-stream')
+const pullFile = require('pull-file')
+
+const { files } = require('./util')
 
 let repeat
 let runs
-let max
 
 const argv = minimist(process.argv.slice(2), {
   boolean: 'child',
@@ -20,8 +21,7 @@ const argv = minimist(process.argv.slice(2), {
     port: 3000,
     host: 'localhost',
     lib: 'pull-mplex',
-    sends: 1000,
-    repeat: 100,
+    repeat: 1,
     runs: 3
   }
 })
@@ -31,12 +31,11 @@ const argv = minimist(process.argv.slice(2), {
  * calls back with the benchmark function to execute
  * @param {function(function)} callback
  */
-function buildPingPong (callback) {
+function buildSendFile (callback) {
   let dialer
   const mplex = require(argv.lib || 'pull-mplex')
   repeat = argv.repeat
   runs = argv.runs
-  max = argv.sends
 
   start(argv)
 
@@ -65,33 +64,22 @@ function buildPingPong (callback) {
       dialer.on('connect', function () {
         const connection = toPull.duplex(dialer)
         dialer = mplex.dialer(connection)
-        callback(null, benchPingPong)
+        callback(null, sendFile)
       })
     })
   }
 
-  let functions = new Array(max)
-
-  for (let i = 0; i < max; i++) {
-    functions[i] = sendEcho
-  }
-
-  function benchPingPong (cb) {
-    parallel(null, functions, null, cb)
-  }
-
-  function sendEcho (cb) {
+  function sendFile (cb) {
     const stream = dialer.newStream((err) => {
       if (err) console.log(err)
     })
 
+    const inputFile = path.join(__dirname, `/fixtures/${files[0].name}.txt`)
+
     pull(
-      pull.values(['ping']),
+      pullFile(inputFile, { bufferSize: 1 << 20 }),
       stream,
-      pull.onEnd((err) => {
-        if (err) console.error(err)
-        cb(err)
-      })
+      pull.collect(cb)
     )
   }
 }
@@ -105,11 +93,11 @@ function times (num, run, cb) {
   })
 }
 
-buildPingPong(function (err, benchPingPong) {
+buildSendFile(function (err, sendFile) {
   if (err) throw err
 
-  // run benchPingPong `repeat` many times
-  const run = bench([benchPingPong], repeat)
+  // run sendFile `repeat` many times
+  const run = bench([sendFile], repeat)
 
   // Do it `runs` many times
   times(runs, run, function () {
