@@ -1,6 +1,6 @@
 {
   "name": "pull-mplex",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "pull-stream based multiplex implementation of https://github.com/libp2p/mplex",
   "leadMaintainer": "Jacob Heun <jacobheun@gmail.com>",
   "main": "src/index.js",
