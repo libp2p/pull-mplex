@@ -56,9 +56,13 @@ class MultiplexMuxer extends EventEmitter {
   /**
    * Ends the connection and all of its streams
    * @param {function(Error)} callback
+   * @returns {void}
    */
   end (callback) {
     callback = callback || noop
+    if (this.multiplex.destroyed) {
+      return nextTick(callback)
+    }
     this.multiplex.once('close', callback)
     this.multiplex.close()
   }
