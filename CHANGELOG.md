@@ -1,3 +1,13 @@
+<a name="0.1.2"></a>
+## [0.1.2](https://github.com/libp2p/pull-mplex/compare/v0.1.1...v0.1.2) (2019-03-15)
+
+
+### Bug Fixes
+
+* ensure we callback on .end ([#9](https://github.com/libp2p/pull-mplex/issues/9)) ([8bd170d](https://github.com/libp2p/pull-mplex/commit/8bd170d))
+
+
+
 <a name="0.1.1"></a>
 ## [0.1.1](https://github.com/libp2p/pull-mplex/compare/v0.1.0...v0.1.1) (2019-02-20)
 
