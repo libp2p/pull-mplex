@@ -7,6 +7,7 @@ const dirtyChai = require('dirty-chai')
 const expect = chai.expect
 chai.use(require('chai-checkmark'))
 chai.use(dirtyChai)
+const sinon = require('sinon')
 
 const pull = require('pull-stream')
 const pair = require('pull-pair/duplex')
@@ -14,10 +15,15 @@ const abortable = require('pull-abortable')
 
 const coder = require('../src/coder')
 const Plex = require('../src/mplex')
+const { Types } = require('../src/consts')
 
 const noop = () => {}
 
 describe('plex', () => {
+  afterEach(() => {
+    sinon.restore()
+  })
+
   it(`destroy should close both ends`, (done) => {
     const p = pair()
 
@@ -43,6 +49,19 @@ describe('plex', () => {
       expect().mark()
     })
     plex1.destroy()
+  })
+
+  it('create stream should create channel with name', () => {
+    const plex1 = new Plex()
+    sinon.spy(plex1, 'push')
+    plex1.createStream()
+
+    expect(plex1.push.callCount).to.eql(1)
+    expect(plex1.push.getCall(0).args[0]).to.eql([
+      0, Types.NEW, '0'
+    ])
+
+    plex1.close()
   })
 
   it(`closing stream should close all channels`, (done) => {
